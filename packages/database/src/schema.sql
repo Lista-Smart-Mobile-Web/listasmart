@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS users (
   name          VARCHAR(120) NOT NULL,
   email         VARCHAR(255) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
+  role          VARCHAR(20) NOT NULL DEFAULT 'consumer'
+                CHECK (role IN ('consumer','partner')),
+  market_id     UUID,
   points        INTEGER     NOT NULL DEFAULT 0,
   level         VARCHAR(20) NOT NULL DEFAULT 'iniciante'
                 CHECK (level IN ('iniciante','colaborador','verificado','especialista','embaixador')),
@@ -113,6 +116,11 @@ CREATE TABLE IF NOT EXISTS leads (
   message     TEXT,
   created_at  TIMESTAMP   NOT NULL DEFAULT NOW()
 );
+
+-- FK adicionada depois porque markets é criado após users
+ALTER TABLE users
+  ADD CONSTRAINT IF NOT EXISTS fk_users_market
+  FOREIGN KEY (market_id) REFERENCES markets(id) ON DELETE SET NULL;
 
 -- ─── ÍNDICES ─────────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_prices_product_market ON prices(product_id, market_id);

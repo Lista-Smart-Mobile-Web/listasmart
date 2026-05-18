@@ -9,6 +9,13 @@ Ele contém as decisões técnicas, regras de negócio e contratos do projeto.
 
 A Lista Smart é uma plataforma que ajuda consumidores a economizarem nas compras de supermercado. Os usuários organizam listas de compras, escaneiam cupons fiscais e colaboram com preços. O sistema compara preços entre mercados e sugere o mais barato para cada lista.
 
+O app mobile é único, mas serve dois perfis distintos com experiências completamente separadas:
+
+- **Usuário comum** → fluxo do consumidor (listas, scanner, comparação, ranking, dashboard pessoal)
+- **Supermercado parceiro** → fluxo do parceiro (dashboard operacional, relatórios, promoções, análise de competitividade)
+
+O tipo de conta é definido no cadastro e detectado no login. Após autenticar, o app redireciona para o conjunto de telas correspondente ao perfil.
+
 ---
 
 ## Arquitetura geral
@@ -19,8 +26,8 @@ Um backend compartilhado atende o app mobile e o web.
 ```
 listasmart/
 ├── apps/
-│   ├── mobile/          → React Native + Expo (P1)
-│   └── web/             → Next.js 14 (P2)
+│   ├── mobile/          → React Native + Expo — app único, dois fluxos de login (P1)
+│   └── web/             → Next.js 14 — landing page institucional (P2)
 ├── packages/
 │   ├── api/             → Node.js + Express (P3)
 │   ├── database/        → PostgreSQL, migrations, seeds (P3)
@@ -32,8 +39,8 @@ listasmart/
 
 ## Divisão de pessoas
 
-- **P1** — app mobile: `apps/mobile/`
-- **P2** — web (landing + portal parceiro + dashboard): `apps/web/`
+- **P1** — app mobile (fluxo consumidor + fluxo parceiro): `apps/mobile/`
+- **P2** — web (landing page institucional): `apps/web/`
 - **P3** — backend + banco + tipos compartilhados: `packages/`
 
 ---
@@ -50,13 +57,13 @@ listasmart/
 
 ---
 
-## URLs de produção
+## URLs de produção (web)
 
 | URL | Módulo | Renderização |
 |-----|--------|-------------|
 | `listasmart.com/` | Landing page institucional | SSG (`force-static`) |
-| `listasmart.com/parceiros/*` | Portal supermercado parceiro | SSR + cookie JWT httpOnly |
-| `listasmart.com/dashboard/*` | Dashboard admin Lista Smart | SSR + Client Components |
+
+> O portal do parceiro e o dashboard de inteligência estão no **app mobile**, não no web. O web é exclusivamente a landing page institucional.
 
 ---
 
@@ -87,14 +94,14 @@ GET    /contributions/history  → histórico de contribuições do usuário
 
 GET    /markets                → lista mercados (?lat=&lng=&radius=)
 GET    /markets/:id            → detalhe do mercado
-GET    /markets/:id/dashboard  → visão do parceiro (auth parceiro)
-POST   /markets/:id/promotions → cria promoção (auth parceiro)
-GET    /markets/:id/report     → relatório exportável (auth parceiro)
+GET    /markets/:id/dashboard  → visão do parceiro (auth role:partner)
+POST   /markets/:id/promotions → cria promoção (auth role:partner)
+GET    /markets/:id/report     → relatório exportável — PDF/CSV (auth role:partner)
 
 GET    /ranking                → ranking semanal de colaboradores
-GET    /analytics/overview     → KPIs gerais (auth admin)
+GET    /analytics/overview     → resumo de inteligência do consumidor (auth role:consumer)
 GET    /analytics/prices       → variação temporal (?product_id=&period=30d)
-GET    /analytics/markets      → ranking de competitividade (auth admin)
+GET    /analytics/markets      → ranking de competitividade (auth role:partner)
 
 POST   /api/leads              → formulário de contato da landing page
 ```
@@ -103,20 +110,18 @@ POST   /api/leads              → formulário de contato da landing page
 
 ## Autenticação
 
-Dois fluxos de autenticação independentes:
+Um único fluxo de autenticação no app mobile, com redirecionamento baseado em `role`:
 
-**App mobile e web público**
+**Login único — app mobile**
 - Token JWT enviado no header: `Authorization: Bearer <token>`
-- Armazenado no AsyncStorage (mobile) ou memória (web)
+- Armazenado no AsyncStorage
+- O JWT inclui o campo `role`: `consumer` | `partner`
+- Após login, o app verifica o `role` e navega para o fluxo correto:
+  - `consumer` → telas do consumidor (`(tabs)/listas`, scanner, comparação, ranking, dashboard pessoal)
+  - `partner` → telas do parceiro (`(partner)/dashboard`, relatórios, promoções, análise de competitividade)
 
-**Portal parceiro**
-- Token JWT armazenado em cookie `httpOnly` (mais seguro para SSR)
-- `middleware.ts` do Next.js intercepta `/parceiros/*` e verifica o cookie antes de renderizar
-- Login exclusivo em `/parceiros/login`
-
-**Dashboard admin**
-- Mesmo mecanismo do portal parceiro mas com role `admin`
-- `middleware.ts` também protege `/dashboard/*`
+**Web (landing page)**
+- Sem autenticação — apenas SSG público
 
 ---
 
@@ -125,7 +130,9 @@ Dois fluxos de autenticação independentes:
 ```sql
 users (
   id UUID PK, name, email, password_hash,
+  role VARCHAR(20) DEFAULT 'consumer',   -- 'consumer' | 'partner'
   points INTEGER DEFAULT 0, level VARCHAR(20) DEFAULT 'iniciante',
+  market_id UUID FK NULL,                -- preenchido apenas quando role='partner'
   created_at TIMESTAMP
 )
 
@@ -183,8 +190,10 @@ export interface User {
   id: string
   name: string
   email: string
-  points: number
+  role: 'consumer' | 'partner'
+  points: number                          // relevante apenas para role:'consumer'
   level: 'iniciante' | 'colaborador' | 'verificado' | 'especialista' | 'embaixador'
+  marketId?: string                       // preenchido apenas para role:'partner'
 }
 
 export interface Product {
@@ -289,8 +298,8 @@ Workspaces nativos, instalação mais rápida que npm/yarn, e o comando `pnpm --
 **Por que cookie httpOnly para parceiros?**
 XSS não consegue ler cookies httpOnly. Para o portal web do parceiro é mais seguro que localStorage. O app mobile usa Bearer token no header porque não tem contexto de browser.
 
-**Por que dois fluxos de auth separados?**
-Portal parceiro e dashboard admin são produtos distintos com propósitos diferentes. Autenticações independentes evitam que um parceiro acesse o dashboard admin por acidente ou exploração.
+**Por que um único app com dois fluxos por `role`?**
+Um único app mobile reduz custo de manutenção, reutiliza componentes comuns (ex: busca de produtos, mapa de mercados) e simplifica distribuição nas lojas. O campo `role` no JWT determina qual conjunto de telas o expo-router renderiza após o login — consumidores nunca enxergam as rotas `(partner)` e vice-versa.
 
 **Por que pointsService separado?**
 Centraliza a lógica de gamificação. Facilita testes unitários e evita lógica espalhada pelas rotas.
@@ -299,20 +308,36 @@ Centraliza a lógica de gamificação. Facilita testes unitários e evita lógic
 
 ## Estrutura do app mobile — telas principais
 
-```
-(auth)/login.tsx          → email + senha + link "esqueci senha"
-(auth)/cadastro.tsx       → nome, email, senha, confirmação
+O app usa expo-router com grupos de rotas separados por perfil:
 
+**Fluxo comum (pré-login)**
+```
+(auth)/login.tsx          → email + senha + link "esqueci senha" (detecta role no login)
+(auth)/cadastro.tsx       → nome, email, senha, tipo de conta (consumidor ou parceiro)
+```
+
+**Fluxo consumidor** — acessível somente com `role: consumer`
+```
 (tabs)/listas.tsx         → lista de todas as listas + botão criar nova
 (tabs)/scanner.tsx        → câmera QR Code + fallback manual
 (tabs)/comparar.tsx       → seleciona lista, vê mercado mais barato no total
 (tabs)/ranking.tsx        → ranking semanal + posição do usuário
+(tabs)/dashboard.tsx      → dashboard de inteligência pessoal (histórico de economia, tendências)
 (tabs)/perfil.tsx         → pontos, nível, selos, histórico
 
 lista/[id].tsx            → itens da lista + preços + marcar comprado
 ```
 
-**Modais:**
+**Fluxo parceiro** — acessível somente com `role: partner`
+```
+(partner)/dashboard.tsx   → visão geral do mercado (produtos mais buscados, competitividade)
+(partner)/precos.tsx      → comparação de preços vs concorrentes, oportunidades
+(partner)/promocoes.tsx   → criar, editar e publicar promoções
+(partner)/relatorios.tsx  → exportação de relatórios (PDF / CSV)
+(partner)/perfil.tsx      → dados do mercado, endereço, horário, logo
+```
+
+**Modais (consumidor):**
 - `AdicionarProdutoModal` — busca por nome ou leitura de código de barras
 - `CadastrarPrecoModal` — produto + mercado + preço + data (fallback do scanner)
 - `NotificacoesModal` — queda de preço, produto mais barato em outro mercado
@@ -321,17 +346,10 @@ lista/[id].tsx            → itens da lista + preços + marcar comprado
 
 ## Estrutura do web — páginas principais
 
+O web é exclusivamente a landing page institucional. Portal do parceiro e dashboard estão no app mobile.
+
 ```
-/                         → landing page (SSG)
-/parceiros/login          → login exclusivo do mercado
-/parceiros/dashboard      → visões, produtos mais pesquisados, competitividade
-/parceiros/precos         → mais baratos vs concorrentes, oportunidades
-/parceiros/promocoes      → criar, editar e publicar promoções
-/parceiros/relatorios     → exportação PDF e CSV
-/parceiros/perfil         → dados do mercado, endereço, horário, logo
-/dashboard                → KPIs gerais (admin)
-/dashboard/precos         → variação temporal por produto
-/dashboard/mercados       → ranking de competitividade
+/                         → landing page institucional (SSG)
 ```
 
 ---
@@ -351,7 +369,6 @@ lista/[id].tsx            → itens da lista + preços + marcar comprado
 DATABASE_URL=postgresql://usuario:senha@localhost:5432/listasmart
 JWT_SECRET=
 JWT_EXPIRES_IN=7d
-PARTNER_JWT_SECRET=
 NEXT_PUBLIC_API_URL=http://localhost:3001
 EXPO_PUBLIC_API_URL=http://localhost:3001
 ```

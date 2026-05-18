@@ -1,10 +1,10 @@
 import { Router } from 'express'
 import pool from '../db'
-import { authPartner } from '../middleware/auth'
+import { requireRole } from '../middleware/auth'
 
 const router = Router()
 
-router.get('/market/:marketId', authPartner, async (req, res) => {
+router.get('/market/:marketId', requireRole('partner'), async (req, res) => {
   const { marketId } = req.params
 
   const [pricesResult, productsResult] = await Promise.all([

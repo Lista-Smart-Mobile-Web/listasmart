@@ -1,7 +1,20 @@
 # Lista Smart — Monorepo
 
 Plataforma para comparação colaborativa de preços em supermercados.  
-App mobile para consumidores · Landing page institucional · Portal para supermercados parceiros · Dashboard de inteligência.
+App mobile único com dois fluxos de login · Landing page institucional · Backend compartilhado.
+
+---
+
+## Dois fluxos dentro do mesmo app mobile
+
+O app mobile detecta o tipo de conta no login e redireciona para a experiência correta:
+
+| Tipo de conta | Experiência |
+|---------------|-------------|
+| Usuário comum | App do consumidor — listas, scanner, comparação de preços, ranking, dashboard de inteligência pessoal |
+| Supermercado parceiro | Portal do parceiro — dashboard operacional, relatórios, promoções, comparação de competitividade |
+
+> **Nunca há dois apps separados.** O login determina qual fluxo de telas o usuário verá.
 
 ---
 
@@ -10,8 +23,8 @@ App mobile para consumidores · Landing page institucional · Portal para superm
 ```
 listasmart/
 ├── apps/
-│   ├── mobile/          → React Native + Expo (P1)
-│   └── web/             → Next.js 14 — landing, parceiro, dashboard (P2)
+│   ├── mobile/          → React Native + Expo — app único, dois fluxos (P1)
+│   └── web/             → Next.js 14 — landing page institucional (P2)
 ├── packages/
 │   ├── api/             → Node.js + Express — backend compartilhado (P3)
 │   ├── database/        → schema, migrations, seeds (P3)
@@ -27,8 +40,8 @@ listasmart/
 
 | Pessoa | Área | Pastas |
 |--------|------|--------|
-| P1 | App mobile | `apps/mobile/` |
-| P2 | Web (landing + parceiro + dashboard) | `apps/web/` |
+| P1 | App mobile (consumidor + parceiro) | `apps/mobile/` |
+| P2 | Web (landing page) | `apps/web/` |
 | P3 | Backend + banco + tipos compartilhados | `packages/api/` · `packages/database/` · `packages/shared/` |
 
 ---
@@ -99,16 +112,13 @@ Copie `.env.example` para `.env` e preencha:
 # banco de dados
 DATABASE_URL=postgresql://usuario:senha@localhost:5432/listasmart
 
-# autenticação JWT
+# autenticação JWT (único segredo — role incluso no token)
 JWT_SECRET=sua_chave_secreta_aqui
 JWT_EXPIRES_IN=7d
 
 # API (usada pelo web e mobile)
 NEXT_PUBLIC_API_URL=http://localhost:3001
 EXPO_PUBLIC_API_URL=http://localhost:3001
-
-# parceiros (cookie)
-PARTNER_JWT_SECRET=outra_chave_secreta_aqui
 ```
 
 > **Nunca commite o arquivo `.env` real.** Ele já está no `.gitignore`.
@@ -179,7 +189,7 @@ Antes de alterar tipos no `shared`, avise a equipe — é o arquivo com maior im
 O P3 precisa entregar antes dos outros poderem integrar:
 
 - [ ] Schema do banco criado e migrations rodando
-- [ ] Rotas `/auth/register` e `/auth/login` funcionando
+- [ ] Rotas `/auth/register` e `/auth/login` funcionando (com campo `role`: `consumer` | `partner`)
 - [ ] Arquivo `packages/shared/src/types.ts` com os tipos base
 - [ ] `.env.example` atualizado
 
@@ -191,9 +201,9 @@ Só depois disso o P1 e P2 conseguem começar a integrar com a API.
 
 | Camada | Tecnologia |
 |--------|-----------|
-| Mobile | React Native · Expo · Zustand · React Query · SQLite |
-| Web | Next.js 14 · Tailwind CSS · Recharts · Framer Motion |
-| Backend | Node.js · Express · JWT · Zod |
+| Mobile (consumidor + parceiro) | React Native · Expo · expo-router · Zustand · React Query · SQLite |
+| Web (landing) | Next.js 14 · Tailwind CSS · Framer Motion |
+| Backend | Node.js · Express · JWT (com `role`) · Zod |
 | Banco | PostgreSQL · (SQLite local no mobile) |
 | Monorepo | pnpm workspaces · Turborepo |
 

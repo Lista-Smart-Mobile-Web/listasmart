@@ -2,6 +2,8 @@ export interface User {
   id: string
   name: string
   email: string
+  role: 'consumer' | 'partner'
+  marketId?: string
   points: number
   level: 'iniciante' | 'colaborador' | 'verificado' | 'especialista' | 'embaixador'
 }
@@ -75,6 +77,7 @@ export interface Promotion {
   validUntil: string
 }
 
+export type UserRole = User['role']
 export type UserLevel = User['level']
 export type ContributionType = Contribution['type']
 export type ContributionStatus = Contribution['status']
