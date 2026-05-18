@@ -16,7 +16,11 @@ export default function LoginScreen() {
     try {
       const { data } = await api.post('/auth/login', { email, password })
       setAuth(data.user, data.token)
-      router.replace('/(tabs)/listas')
+      if (data.user.role === 'partner') {
+        router.replace('/(partner)/dashboard')
+      } else {
+        router.replace('/(tabs)/listas')
+      }
     } catch (err: any) {
       Alert.alert('Erro', err.response?.data?.error ?? 'Falha ao entrar')
     } finally {

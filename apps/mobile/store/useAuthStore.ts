@@ -6,6 +6,8 @@ interface User {
   id: string
   name: string
   email: string
+  role: 'consumer' | 'partner'
+  marketId?: string
   points: number
   level: string
 }

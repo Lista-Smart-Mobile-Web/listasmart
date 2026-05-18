@@ -6,11 +6,17 @@ import { useAuthStore } from '../store/useAuthStore'
 const queryClient = new QueryClient()
 
 export default function RootLayout() {
-  const token = useAuthStore((s) => s.token)
+  const { token, user } = useAuthStore((s) => ({ token: s.token, user: s.user }))
 
   useEffect(() => {
-    if (!token) router.replace('/(auth)/login')
-  }, [token])
+    if (!token) {
+      router.replace('/(auth)/login')
+    } else if (user?.role === 'partner') {
+      router.replace('/(partner)/dashboard')
+    } else {
+      router.replace('/(tabs)/listas')
+    }
+  }, [token, user?.role])
 
   return (
     <QueryClientProvider client={queryClient}>
