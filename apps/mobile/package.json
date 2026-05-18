@@ -1,0 +1,28 @@
+{
+  "name": "@listasmart/mobile",
+  "version": "0.1.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios"
+  },
+  "dependencies": {
+    "@listasmart/shared": "workspace:*",
+    "@tanstack/react-query": "^5.0.0",
+    "expo": "~51.0.0",
+    "expo-camera": "~15.0.0",
+    "expo-network": "~6.0.0",
+    "expo-router": "~3.5.0",
+    "expo-sqlite": "~13.4.0",
+    "react": "18.2.0",
+    "react-native": "0.74.1",
+    "zod": "^3.22.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0",
+    "@types/react": "~18.2.0",
+    "typescript": "^5"
+  }
+}

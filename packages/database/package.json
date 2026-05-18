@@ -1,0 +1,18 @@
+{
+  "name": "@listasmart/database",
+  "version": "0.1.0",
+  "scripts": {
+    "migrate": "ts-node src/migrate.ts",
+    "seed": "ts-node src/seed.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.0",
+    "pg": "^8.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/pg": "^8.11.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5"
+  }
+}
