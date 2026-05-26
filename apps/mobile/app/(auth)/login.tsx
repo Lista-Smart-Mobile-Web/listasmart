@@ -1,71 +1,138 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native'
+import {
+  View, Text, TouchableOpacity, StyleSheet, KeyboardAvoidingView,
+  Platform, ScrollView,
+} from 'react-native'
 import { router } from 'expo-router'
-import api from '../../services/api'
-import { useAuthStore } from '../../store/useAuthStore'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { useForm, Controller } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import api from '@services/api'
+import { useAuthStore } from '@store/useAuthStore'
+import { Button, Input } from '@components/ui'
+import { Colors, Typography, Spacing, Radius } from '@constants/index'
+
+const schema = z.object({
+  email: z.string().email('E-mail inválido'),
+  password: z.string().min(6, 'Mínimo 6 caracteres'),
+})
+type FormData = z.infer<typeof schema>
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const setAuth = useAuthStore((s) => s.setAuth)
 
-  async function handleLogin() {
-    if (!email || !password) return Alert.alert('Preencha todos os campos')
+  const { control, handleSubmit, formState: { errors }, setError } = useForm<FormData>({
+    resolver: zodResolver(schema),
+  })
+
+  async function onSubmit(data: FormData) {
     setLoading(true)
     try {
-      const { data } = await api.post('/auth/login', { email, password })
-      setAuth(data.user, data.token)
-      if (data.user.role === 'partner') {
-        router.replace('/(partner)/dashboard')
-      } else {
-        router.replace('/(tabs)/listas')
-      }
+      const { data: res } = await api.post('/auth/login', data)
+      setAuth(res.user, res.token)
+      router.replace(res.user.role === 'partner' ? '/(partner)/dashboard' : '/(tabs)/listas')
     } catch (err: any) {
-      Alert.alert('Erro', err.response?.data?.error ?? 'Falha ao entrar')
+      setError('email', { message: err.response?.data?.error ?? 'Credenciais inválidas' })
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>ListaSmart</Text>
-      <Text style={styles.subtitle}>Entre na sua conta</Text>
+    <SafeAreaView style={styles.safe}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          {/* Logo / branding */}
+          <View style={styles.brand}>
+            <View style={styles.logoMark}>
+              <Text style={styles.logoText}>L</Text>
+            </View>
+            <Text style={styles.appName}>Lista Smart</Text>
+            <Text style={styles.tagline}>Economize nas suas compras</Text>
+          </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="E-mail"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Senha"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+          {/* Form */}
+          <View style={styles.form}>
+            <Text style={styles.title}>Entrar</Text>
 
-      <TouchableOpacity style={styles.btn} onPress={handleLogin} disabled={loading}>
-        <Text style={styles.btnText}>{loading ? 'Entrando…' : 'Entrar'}</Text>
-      </TouchableOpacity>
+            <Controller
+              control={control}
+              name="email"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="E-mail"
+                  placeholder="seu@email.com"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.email?.message}
+                />
+              )}
+            />
 
-      <TouchableOpacity onPress={() => router.push('/(auth)/cadastro')}>
-        <Text style={styles.link}>Não tem conta? Cadastre-se</Text>
-      </TouchableOpacity>
-    </View>
+            <Controller
+              control={control}
+              name="password"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="Senha"
+                  placeholder="••••••••"
+                  secureTextEntry
+                  autoComplete="password"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.password?.message}
+                />
+              )}
+            />
+
+            <Button
+              label="Entrar"
+              loading={loading}
+              fullWidth
+              size="lg"
+              style={{ marginTop: Spacing.sm }}
+              onPress={handleSubmit(onSubmit)}
+            />
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Não tem conta?</Text>
+            <TouchableOpacity onPress={() => router.push('/(auth)/cadastro')}>
+              <Text style={styles.footerLink}> Cadastre-se grátis</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#fff' },
-  title: { fontSize: 32, fontWeight: '800', color: '#0a0a0a', textAlign: 'center', marginBottom: 4 },
-  subtitle: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 32 },
-  input: { borderWidth: 1, borderColor: '#e5e5e5', borderRadius: 10, padding: 14, marginBottom: 12, fontSize: 16 },
-  btn: { backgroundColor: '#f59e0b', borderRadius: 10, padding: 16, alignItems: 'center', marginTop: 8 },
-  btnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  link: { textAlign: 'center', color: '#f59e0b', marginTop: 20, fontSize: 14 },
+  safe: { flex: 1, backgroundColor: Colors.bg },
+  container: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: Spacing.xxl, gap: Spacing.xxxl },
+
+  brand: { alignItems: 'center', gap: Spacing.sm },
+  logoMark: {
+    width: 64, height: 64, borderRadius: 20,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  logoText: { fontSize: 32, fontWeight: Typography.extrabold, color: '#1a0d00' },
+  appName: { fontSize: Typography.xxl, fontWeight: Typography.extrabold, color: Colors.text },
+  tagline: { fontSize: Typography.sm, color: Colors.textSecondary },
+
+  form: { gap: Spacing.md },
+  title: { fontSize: Typography.xl, fontWeight: Typography.bold, color: Colors.text, marginBottom: Spacing.sm },
+
+  footer: { flexDirection: 'row', justifyContent: 'center', paddingBottom: Spacing.lg },
+  footerText: { fontSize: Typography.sm, color: Colors.textSecondary },
+  footerLink: { fontSize: Typography.sm, color: Colors.primaryLight, fontWeight: Typography.semibold },
 })

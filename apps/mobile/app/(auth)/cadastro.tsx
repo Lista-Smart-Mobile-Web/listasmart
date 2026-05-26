@@ -1,92 +1,185 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native'
+import {
+  View, Text, TouchableOpacity, StyleSheet, KeyboardAvoidingView,
+  Platform, ScrollView,
+} from 'react-native'
 import { router } from 'expo-router'
-import api from '../../services/api'
-import { useAuthStore } from '../../store/useAuthStore'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { useForm, Controller } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import api from '@services/api'
+import { useAuthStore } from '@store/useAuthStore'
+import { Button, Input, Card } from '@components/ui'
+import { Colors, Typography, Spacing, Radius } from '@constants/index'
 
-type Role = 'consumer' | 'partner'
+const schema = z.object({
+  name: z.string().min(2, 'Nome muito curto'),
+  email: z.string().email('E-mail inválido'),
+  password: z.string().min(6, 'Mínimo 6 caracteres'),
+  role: z.enum(['consumer', 'partner']),
+})
+type FormData = z.infer<typeof schema>
 
 export default function CadastroScreen() {
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [role, setRole] = useState<Role>('consumer')
   const [loading, setLoading] = useState(false)
   const setAuth = useAuthStore((s) => s.setAuth)
 
-  async function handleRegister() {
-    if (!name || !email || !password) return Alert.alert('Preencha todos os campos')
+  const { control, handleSubmit, watch, setValue, formState: { errors }, setError } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: { role: 'consumer' },
+  })
+
+  const selectedRole = watch('role')
+
+  async function onSubmit(data: FormData) {
     setLoading(true)
     try {
-      const { data } = await api.post('/auth/register', { name, email, password, role })
-      setAuth(data.user, data.token)
-      if (data.user.role === 'partner') {
-        router.replace('/(partner)/dashboard')
-      } else {
-        router.replace('/(tabs)/listas')
-      }
+      const { data: res } = await api.post('/auth/register', data)
+      setAuth(res.user, res.token)
+      router.replace(res.user.role === 'partner' ? '/(partner)/dashboard' : '/(tabs)/listas')
     } catch (err: any) {
-      Alert.alert('Erro', err.response?.data?.error ?? 'Falha ao cadastrar')
+      setError('email', { message: err.response?.data?.error ?? 'Falha ao cadastrar' })
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Criar conta</Text>
-      <Text style={styles.subtitle}>Comece a economizar hoje</Text>
+    <SafeAreaView style={styles.safe}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          <View style={styles.header}>
+            <Text style={styles.title}>Criar conta</Text>
+            <Text style={styles.subtitle}>Comece a economizar hoje</Text>
+          </View>
 
-      <TextInput style={styles.input} placeholder="Nome completo" value={name} onChangeText={setName} />
-      <TextInput
-        style={styles.input}
-        placeholder="E-mail"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput style={styles.input} placeholder="Senha" secureTextEntry value={password} onChangeText={setPassword} />
+          <View style={styles.form}>
+            <Controller
+              control={control}
+              name="name"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="Nome completo"
+                  placeholder="Maria Silva"
+                  autoCapitalize="words"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.name?.message}
+                />
+              )}
+            />
 
-      <Text style={styles.roleLabel}>Tipo de conta</Text>
-      <View style={styles.roleRow}>
-        <TouchableOpacity
-          style={[styles.roleBtn, role === 'consumer' && styles.roleBtnActive]}
-          onPress={() => setRole('consumer')}
-        >
-          <Text style={[styles.roleBtnText, role === 'consumer' && styles.roleBtnTextActive]}>Consumidor</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.roleBtn, role === 'partner' && styles.roleBtnActive]}
-          onPress={() => setRole('partner')}
-        >
-          <Text style={[styles.roleBtnText, role === 'partner' && styles.roleBtnTextActive]}>Supermercado</Text>
-        </TouchableOpacity>
-      </View>
+            <Controller
+              control={control}
+              name="email"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="E-mail"
+                  placeholder="seu@email.com"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.email?.message}
+                />
+              )}
+            />
 
-      <TouchableOpacity style={styles.btn} onPress={handleRegister} disabled={loading}>
-        <Text style={styles.btnText}>{loading ? 'Cadastrando…' : 'Criar conta'}</Text>
-      </TouchableOpacity>
+            <Controller
+              control={control}
+              name="password"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="Senha"
+                  placeholder="••••••••"
+                  secureTextEntry
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.password?.message}
+                />
+              )}
+            />
 
-      <TouchableOpacity onPress={() => router.back()}>
-        <Text style={styles.link}>Já tem conta? Entre</Text>
-      </TouchableOpacity>
-    </View>
+            {/* Seleção de tipo de conta */}
+            <View style={styles.roleSection}>
+              <Text style={styles.roleLabel}>Tipo de conta</Text>
+              <View style={styles.roleRow}>
+                <TouchableOpacity
+                  style={[styles.roleBtn, selectedRole === 'consumer' && styles.roleBtnActive]}
+                  onPress={() => setValue('role', 'consumer')}
+                >
+                  <Text style={styles.roleEmoji}>🛒</Text>
+                  <Text style={[styles.roleBtnText, selectedRole === 'consumer' && styles.roleBtnTextActive]}>
+                    Consumidor
+                  </Text>
+                  <Text style={styles.roleDesc}>Listas e comparação</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.roleBtn, selectedRole === 'partner' && styles.roleBtnActive]}
+                  onPress={() => setValue('role', 'partner')}
+                >
+                  <Text style={styles.roleEmoji}>🏪</Text>
+                  <Text style={[styles.roleBtnText, selectedRole === 'partner' && styles.roleBtnTextActive]}>
+                    Supermercado
+                  </Text>
+                  <Text style={styles.roleDesc}>Dashboard + promoções</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <Button
+              label="Criar conta"
+              loading={loading}
+              fullWidth
+              size="lg"
+              style={{ marginTop: Spacing.sm }}
+              onPress={handleSubmit(onSubmit)}
+            />
+          </View>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Já tem conta?</Text>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Text style={styles.footerLink}> Entrar</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#fff' },
-  title: { fontSize: 32, fontWeight: '800', color: '#0a0a0a', textAlign: 'center', marginBottom: 4 },
-  subtitle: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 32 },
-  input: { borderWidth: 1, borderColor: '#e5e5e5', borderRadius: 10, padding: 14, marginBottom: 12, fontSize: 16 },
-  roleLabel: { fontSize: 14, color: '#444', marginBottom: 8 },
-  roleRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  roleBtn: { flex: 1, padding: 12, borderRadius: 10, borderWidth: 1.5, borderColor: '#e5e5e5', alignItems: 'center' },
-  roleBtnActive: { borderColor: '#f59e0b', backgroundColor: '#fffbeb' },
-  roleBtnText: { fontSize: 14, color: '#666', fontWeight: '600' },
-  roleBtnTextActive: { color: '#d97706' },
-  btn: { backgroundColor: '#f59e0b', borderRadius: 10, padding: 16, alignItems: 'center', marginTop: 8 },
-  btnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  link: { textAlign: 'center', color: '#f59e0b', marginTop: 20, fontSize: 14 },
+  safe: { flex: 1, backgroundColor: Colors.bg },
+  container: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: Spacing.xxl, gap: Spacing.xxl, paddingVertical: Spacing.xxl },
+
+  header: { gap: Spacing.xs },
+  title: { fontSize: Typography.xxl, fontWeight: Typography.extrabold, color: Colors.text },
+  subtitle: { fontSize: Typography.base, color: Colors.textSecondary },
+
+  form: { gap: Spacing.md },
+
+  roleSection: { gap: Spacing.sm },
+  roleLabel: { fontSize: Typography.sm, fontWeight: Typography.semibold, color: Colors.textSecondary },
+  roleRow: { flexDirection: 'row', gap: Spacing.sm },
+  roleBtn: {
+    flex: 1, padding: Spacing.md, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    alignItems: 'center', gap: Spacing.xs,
+  },
+  roleBtnActive: { borderColor: Colors.primaryBorder, backgroundColor: Colors.primaryDim },
+  roleEmoji: { fontSize: 24 },
+  roleBtnText: { fontSize: Typography.sm, fontWeight: Typography.bold, color: Colors.textSecondary },
+  roleBtnTextActive: { color: Colors.primaryLight },
+  roleDesc: { fontSize: Typography.xs, color: Colors.textMuted, textAlign: 'center' },
+
+  footer: { flexDirection: 'row', justifyContent: 'center' },
+  footerText: { fontSize: Typography.sm, color: Colors.textSecondary },
+  footerLink: { fontSize: Typography.sm, color: Colors.primaryLight, fontWeight: Typography.semibold },
 })

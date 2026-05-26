@@ -1,70 +1,207 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
 import { useQuery } from '@tanstack/react-query'
-import api from '../../services/api'
-import { useAuthStore } from '../../store/useAuthStore'
+import api from '@services/api'
+import { useAuthStore } from '@store/useAuthStore'
+import { Badge, Card } from '@components/ui'
+import { Colors, Typography, Spacing, Radius } from '@constants/index'
 
-interface Badge { badge_type: string; earned_at: string }
+// Pontos para subir de nível — definido em docs/context.md
+const LEVEL_THRESHOLDS = [
+  { level: 'iniciante', min: 0, max: 49 },
+  { level: 'colaborador', min: 50, max: 199 },
+  { level: 'verificado', min: 200, max: 499 },
+  { level: 'especialista', min: 500, max: 999 },
+  { level: 'embaixador', min: 1000, max: Infinity },
+]
 
-const LEVEL_COLORS: Record<string, string> = {
-  iniciante: '#94a3b8',
-  colaborador: '#22c55e',
-  verificado: '#3b82f6',
-  especialista: '#a855f7',
-  embaixador: '#f59e0b',
+function getLevelProgress(points: number, level: string) {
+  const current = LEVEL_THRESHOLDS.find((l) => l.level === level)
+  if (!current || current.max === Infinity) return 1
+  const range = current.max - current.min
+  const progress = (points - current.min) / range
+  return Math.min(Math.max(progress, 0), 1)
+}
+
+function getNextLevel(level: string): string | null {
+  const idx = LEVEL_THRESHOLDS.findIndex((l) => l.level === level)
+  return LEVEL_THRESHOLDS[idx + 1]?.level ?? null
+}
+
+const BADGE_ICONS: Record<string, string> = {
+  primeira_lista: '📋',
+  colaborador_iniciante: '🤝',
+  verificador: '✅',
+  sequencia_7dias: '🔥',
+  embaixador: '🏆',
 }
 
 export default function PerfilScreen() {
   const { user, logout } = useAuthStore()
 
-  const { data: badges = [] } = useQuery<Badge[]>({
+  // TODO: endpoint /users/me/badges ainda não implementado no backend
+  // Dependência: GET /users/me/badges (packages/api)
+  const { data: badges = [] } = useQuery<{ badge_type: string; earned_at: string }[]>({
     queryKey: ['badges'],
     queryFn: () => api.get('/users/me/badges').then((r) => r.data),
     enabled: !!user,
+    retry: false,
   })
 
+  const pts = user?.points ?? 0
+  const level = user?.level ?? 'iniciante'
+  const progress = getLevelProgress(pts, level)
+  const nextLevel = getNextLevel(level)
+  const current = LEVEL_THRESHOLDS.find((l) => l.level === level)
+  const ptsToNext = current && current.max !== Infinity ? current.max - pts + 1 : null
+
+  function confirmLogout() {
+    Alert.alert('Sair', 'Tem certeza que quer sair?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Sair', style: 'destructive', onPress: logout },
+    ])
+  }
+
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <View style={[styles.avatar, { backgroundColor: LEVEL_COLORS[user?.level ?? 'iniciante'] }]}>
-          <Text style={styles.avatarText}>{user?.name?.[0]?.toUpperCase()}</Text>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        {/* Avatar + nome */}
+        <View style={styles.avatarSection}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{user?.name?.[0]?.toUpperCase() ?? '?'}</Text>
+          </View>
+          <Text style={styles.name}>{user?.name}</Text>
+          <Text style={styles.email}>{user?.email}</Text>
+          <Badge label={level} color="amber" />
         </View>
-        <Text style={styles.name}>{user?.name}</Text>
-        <Text style={styles.email}>{user?.email}</Text>
-        <View style={styles.pointsRow}>
-          <Text style={styles.points}>{user?.points ?? 0} pts</Text>
-          <Text style={styles.level}>{user?.level}</Text>
-        </View>
-      </View>
 
-      {badges.length > 0 && (
+        {/* Card de pontos + progresso */}
+        <Card variant="amber" style={styles.ptsCard}>
+          <View style={styles.ptsRow}>
+            <View>
+              <Text style={styles.ptsValue}>{pts}</Text>
+              <Text style={styles.ptsLabel}>pontos totais</Text>
+            </View>
+            {nextLevel && ptsToNext !== null && (
+              <View style={styles.ptsNext}>
+                <Text style={styles.ptsNextLabel}>Faltam</Text>
+                <Text style={styles.ptsNextValue}>{ptsToNext} pts</Text>
+                <Text style={styles.ptsNextLevel}>para {nextLevel}</Text>
+              </View>
+            )}
+            {!nextLevel && (
+              <View style={styles.ptsNext}>
+                <Text style={styles.ptsNextValue}>🏆</Text>
+                <Text style={styles.ptsNextLevel}>Nível máximo!</Text>
+              </View>
+            )}
+          </View>
+          {/* Barra de progresso de nível */}
+          <View style={styles.levelBar}>
+            <View style={[styles.levelFill, { width: `${progress * 100}%` }]} />
+          </View>
+          <View style={styles.levelLabels}>
+            <Text style={styles.levelLabelText}>{level}</Text>
+            {nextLevel && <Text style={styles.levelLabelText}>{nextLevel}</Text>}
+          </View>
+        </Card>
+
+        {/* Conquistas */}
+        {badges.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Conquistas</Text>
+            <View style={styles.badgesGrid}>
+              {badges.map((b) => (
+                <Card key={b.badge_type} variant="default" style={styles.badgeCard}>
+                  <Text style={styles.badgeIcon}>{BADGE_ICONS[b.badge_type] ?? '🏅'}</Text>
+                  <Text style={styles.badgeType}>{b.badge_type.replace(/_/g, ' ')}</Text>
+                </Card>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Ações */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Conquistas</Text>
-          {badges.map((b) => (
-            <Text key={b.badge_type} style={styles.badge}>🏅 {b.badge_type}</Text>
-          ))}
+          <Text style={styles.sectionTitle}>Conta</Text>
+          <Card variant="default" padding={0}>
+            {[
+              { icon: 'person-outline', label: 'Editar perfil', onPress: () => {} },
+              { icon: 'notifications-outline', label: 'Notificações', onPress: () => {} },
+              { icon: 'shield-checkmark-outline', label: 'Privacidade', onPress: () => {} },
+            ].map((item, i, arr) => (
+              <TouchableOpacity
+                key={item.label}
+                style={[styles.menuItem, i < arr.length - 1 && styles.menuItemBorder]}
+                onPress={item.onPress}
+              >
+                <Ionicons name={item.icon as any} size={18} color={Colors.textSecondary} />
+                <Text style={styles.menuLabel}>{item.label}</Text>
+                <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
+              </TouchableOpacity>
+            ))}
+          </Card>
         </View>
-      )}
 
-      <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-        <Text style={styles.logoutText}>Sair</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity style={styles.logoutBtn} onPress={confirmLogout}>
+          <Ionicons name="log-out-outline" size={18} color={Colors.error} />
+          <Text style={styles.logoutText}>Sair da conta</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', paddingTop: 56, paddingHorizontal: 20 },
-  card: { alignItems: 'center', paddingVertical: 32, borderRadius: 16, backgroundColor: '#f9f9f9', marginBottom: 24 },
-  avatar: { width: 72, height: 72, borderRadius: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  avatarText: { color: '#fff', fontSize: 28, fontWeight: '800' },
-  name: { fontSize: 20, fontWeight: '700', color: '#0a0a0a' },
-  email: { fontSize: 14, color: '#999', marginTop: 4 },
-  pointsRow: { flexDirection: 'row', gap: 16, marginTop: 12 },
-  points: { fontSize: 15, fontWeight: '700', color: '#f59e0b' },
-  level: { fontSize: 15, color: '#666', textTransform: 'capitalize' },
-  section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#0a0a0a', marginBottom: 10 },
-  badge: { fontSize: 14, color: '#333', paddingVertical: 6 },
-  logoutBtn: { borderWidth: 1, borderColor: '#e5e5e5', borderRadius: 10, padding: 16, alignItems: 'center' },
-  logoutText: { color: '#ef4444', fontWeight: '600', fontSize: 15 },
+  safe: { flex: 1, backgroundColor: Colors.bg },
+  scroll: { paddingBottom: 100, gap: Spacing.xl },
+
+  avatarSection: { alignItems: 'center', paddingTop: Spacing.xl, gap: Spacing.sm },
+  avatar: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: Colors.primaryDim, borderWidth: 2, borderColor: Colors.primaryBorder,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarText: { fontSize: 32, fontWeight: Typography.extrabold, color: Colors.primaryLight },
+  name: { fontSize: Typography.xl, fontWeight: Typography.extrabold, color: Colors.text },
+  email: { fontSize: Typography.sm, color: Colors.textSecondary },
+
+  ptsCard: { marginHorizontal: Spacing.xl, gap: Spacing.md },
+  ptsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  ptsValue: { fontSize: Typography.xxxl, fontWeight: Typography.extrabold, color: Colors.primaryLight },
+  ptsLabel: { fontSize: Typography.xs, color: Colors.textSecondary },
+  ptsNext: { alignItems: 'flex-end', gap: 2 },
+  ptsNextLabel: { fontSize: Typography.xs, color: Colors.textSecondary },
+  ptsNextValue: { fontSize: Typography.xl, fontWeight: Typography.extrabold, color: Colors.text },
+  ptsNextLevel: { fontSize: Typography.xs, color: Colors.textSecondary, textTransform: 'capitalize' },
+
+  levelBar: { height: 6, backgroundColor: Colors.bg, borderRadius: Radius.full, overflow: 'hidden' },
+  levelFill: { height: '100%', backgroundColor: Colors.primaryLight, borderRadius: Radius.full },
+  levelLabels: { flexDirection: 'row', justifyContent: 'space-between' },
+  levelLabelText: { fontSize: 10, color: Colors.textMuted, textTransform: 'capitalize' },
+
+  section: { paddingHorizontal: Spacing.xl, gap: Spacing.md },
+  sectionTitle: { fontSize: Typography.base, fontWeight: Typography.bold, color: Colors.text },
+
+  badgesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  badgeCard: { alignItems: 'center', gap: Spacing.xs, minWidth: 80, flex: 0 },
+  badgeIcon: { fontSize: 28 },
+  badgeType: { fontSize: 10, color: Colors.textSecondary, textAlign: 'center', textTransform: 'capitalize' },
+
+  menuItem: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
+  },
+  menuItemBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
+  menuLabel: { flex: 1, fontSize: Typography.base, color: Colors.text },
+
+  logoutBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
+    marginHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.error,
+    backgroundColor: Colors.errorDim,
+  },
+  logoutText: { fontSize: Typography.base, fontWeight: Typography.semibold, color: Colors.error },
 })

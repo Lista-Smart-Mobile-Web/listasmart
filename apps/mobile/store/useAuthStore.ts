@@ -15,6 +15,8 @@ interface User {
 interface AuthState {
   user: User | null
   token: string | null
+  _hasHydrated: boolean
+  setHasHydrated: (v: boolean) => void
   setAuth: (user: User, token: string) => void
   updateUser: (partial: Partial<User>) => void
   logout: () => void
@@ -25,6 +27,8 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       token: null,
+      _hasHydrated: false,
+      setHasHydrated: (v) => set({ _hasHydrated: v }),
       setAuth: (user, token) => set({ user, token }),
       updateUser: (partial) => set((s) => ({ user: s.user ? { ...s.user, ...partial } : null })),
       logout: () => set({ user: null, token: null }),
@@ -32,6 +36,9 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'listasmart-auth',
       storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true)
+      },
     }
   )
 )

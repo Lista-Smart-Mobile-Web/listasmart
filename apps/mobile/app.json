@@ -24,8 +24,22 @@
       "expo-router",
       [
         "expo-camera",
-        { "cameraPermission": "Permitir que o Lista Smart acesse sua câmera para escanear cupons fiscais." }
-      ]
+        {
+          "cameraPermission": "Permitir que o Lista Smart acesse sua câmera para escanear cupons fiscais."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#C47A2A",
+          "androidMode": "default",
+          "androidCollapsedTitle": "Lista Smart",
+          "iosDisplayInForeground": true
+        }
+      ],
+      "expo-secure-store",
+      "expo-font",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true

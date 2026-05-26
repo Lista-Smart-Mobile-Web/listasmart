@@ -3,7 +3,36 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ],
+      "@components/*": [
+        "./components/*"
+      ],
+      "@constants/*": [
+        "./constants/*"
+      ],
+      "@hooks/*": [
+        "./hooks/*"
+      ],
+      "@services/*": [
+        "./services/*"
+      ],
+      "@store/*": [
+        "./store/*"
+      ],
+      "@/types": [
+        "./types/index"
+      ]
     }
-  }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.d.ts",
+    ".expo/types/**/*.d.ts",
+    "expo-env.d.ts",
+    "globals.d.ts",
+    ".expo/types/**/*.ts"
+  ]
 }

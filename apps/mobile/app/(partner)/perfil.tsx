@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native'
 import { router } from 'expo-router'
-import { useAuthStore } from '../../../store/useAuthStore'
+import { useAuthStore } from '@store/useAuthStore'
 
 export default function PartnerPerfilScreen() {
   const { user, logout } = useAuthStore((s) => ({ user: s.user, logout: s.logout }))
