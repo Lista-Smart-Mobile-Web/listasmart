@@ -9,6 +9,7 @@ import markets from './markets'
 import ranking from './ranking'
 import analytics from './analytics'
 import leads from './leads'
+import scanner from './scanner'
 
 const router = Router()
 
@@ -22,5 +23,6 @@ router.use('/markets', markets)
 router.use('/ranking', ranking)
 router.use('/analytics', analytics)
 router.use('/leads', leads)
+router.use('/scanner', scanner)
 
 export default router
