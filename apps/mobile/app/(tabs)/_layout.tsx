@@ -1,32 +1,44 @@
 import { Tabs } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+import CustomTabBar from '@components/CustomTabBar'
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name']
 
-const TABS: { name: string; label: string; icon: IoniconName; iconFocused: IoniconName }[] = [
-  { name: 'listas',    label: 'Listas',      icon: 'list-outline',           iconFocused: 'list' },
-  { name: 'scanner',   label: 'Scanner',     icon: 'qr-code-outline',        iconFocused: 'qr-code' },
-  { name: 'comparar',  label: 'Comparar',    icon: 'bar-chart-outline',      iconFocused: 'bar-chart' },
-  { name: 'ranking',   label: 'Ranking',     icon: 'trophy-outline',         iconFocused: 'trophy' },
-  { name: 'dashboard', label: 'Inteligência', icon: 'stats-chart-outline',   iconFocused: 'stats-chart' },
-  { name: 'perfil',    label: 'Perfil',      icon: 'person-outline',         iconFocused: 'person' },
-]
+function icon(outline: IoniconName, filled: IoniconName) {
+  return ({ focused, color, size }: { focused: boolean; color: string; size: number }) => (
+    <Ionicons name={focused ? filled : outline} size={size} color={color} />
+  )
+}
 
 export default function TabsLayout() {
   return (
-    <Tabs screenOptions={{ tabBarActiveTintColor: '#f59e0b', headerShown: false }}>
-      {TABS.map((tab) => (
-        <Tabs.Screen
-          key={tab.name}
-          name={tab.name}
-          options={{
-            title: tab.label,
-            tabBarIcon: ({ focused, color, size }) => (
-              <Ionicons name={focused ? tab.iconFocused : tab.icon} size={size} color={color} />
-            ),
-          }}
-        />
-      ))}
+    <Tabs
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
+    >
+      <Tabs.Screen
+        name="listas"
+        options={{ title: 'Listas', tabBarIcon: icon('list-outline', 'list') }}
+      />
+      <Tabs.Screen
+        name="comparar"
+        options={{ title: 'Comparar', tabBarIcon: icon('bar-chart-outline', 'bar-chart') }}
+      />
+      {/* Centro — FAB */}
+      <Tabs.Screen
+        name="scanner"
+        options={{ title: 'Scanner', tabBarIcon: icon('qr-code-outline', 'qr-code') }}
+      />
+      <Tabs.Screen
+        name="ranking"
+        options={{ title: 'Ranking', tabBarIcon: icon('trophy-outline', 'trophy') }}
+      />
+      <Tabs.Screen
+        name="perfil"
+        options={{ title: 'Perfil', tabBarIcon: icon('person-outline', 'person') }}
+      />
+      {/* Dashboard acessível via link interno — sem aba */}
+      <Tabs.Screen name="dashboard" options={{ href: null }} />
     </Tabs>
   )
 }
