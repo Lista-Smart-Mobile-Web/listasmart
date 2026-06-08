@@ -29,27 +29,27 @@ export default function Features() {
           </ul>
         </div>
         <div className="reveal" style={{ transitionDelay: '.18s' }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 'var(--r)', overflow: 'hidden' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>
+          <div className="fc-compare">
+            <div className="fc-compare-head">
               Comparação de preços · Frango peito s/osso 1kg
             </div>
-            <div style={{ padding: '12px 0' }}>
+            <div className="fc-compare-body">
               {[
-                { rank: '1°', name: 'Atacadão · 1,4km', price: 'R$ 13,90', diff: null, best: true },
-                { rank: '2°', name: 'Carrefour · 2,1km', price: 'R$ 16,80', diff: '+R$ 2,90', best: false },
-                { rank: '3°', name: 'Extra Hiper · 0,8km', price: 'R$ 18,40', diff: '+R$ 4,50', best: false },
-                { rank: '4°', name: 'Pão de Açúcar · 3,2km', price: 'R$ 21,90', diff: '+R$ 8,00', worst: true, best: false },
+                { rank: '1°', name: 'Atacadão · 1,4km', price: 'R$ 13,90', diff: null, best: true, worst: false },
+                { rank: '2°', name: 'Carrefour · 2,1km', price: 'R$ 16,80', diff: '+R$ 2,90', best: false, worst: false },
+                { rank: '3°', name: 'Extra Hiper · 0,8km', price: 'R$ 18,40', diff: '+R$ 4,50', best: false, worst: false },
+                { rank: '4°', name: 'Pão de Açúcar · 3,2km', price: 'R$ 21,90', diff: '+R$ 8,00', best: false, worst: true },
               ].map((row) => (
-                <div key={row.rank} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 20px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', width: '20px', fontFamily: 'var(--mono)' }}>{row.rank}</div>
-                  <div style={{ flex: 1, fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{row.name}</div>
-                  <div style={{ fontSize: '15px', fontWeight: 800, fontFamily: 'var(--mono)', color: row.best ? 'var(--green-lt)' : 'var(--text-sub)' }}>{row.price}</div>
-                  {row.best && <div style={{ fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '99px', background: 'var(--green-subtle)', color: 'var(--green-lt)', border: '1px solid var(--green-border)' }}>Menor preço</div>}
-                  {row.diff && <div style={{ fontSize: '10px', color: row.worst ? 'var(--red-lt)' : 'var(--text-muted)', paddingRight: '4px' }}>{row.diff}</div>}
+                <div key={row.rank} className="fc-compare-row">
+                  <div className="fc-compare-rank">{row.rank}</div>
+                  <div className="fc-compare-name">{row.name}</div>
+                  <div className={`fc-compare-price${row.best ? ' best' : ''}`}>{row.price}</div>
+                  {row.best && <div className="fc-compare-badge">Menor preço</div>}
+                  {row.diff && <div className={`fc-compare-diff${row.worst ? ' worst' : ''}`}>{row.diff}</div>}
                 </div>
               ))}
             </div>
-            <div style={{ padding: '12px 20px', background: 'rgba(196,122,42,.05)', borderTop: '1px solid var(--border)', fontSize: '12px', color: 'var(--text-muted)' }}>
+            <div className="fc-compare-foot">
               Atualizado há 3h · 124 registros de preço · São Paulo, SP
             </div>
           </div>
@@ -69,30 +69,34 @@ export default function Features() {
           </ul>
         </div>
         <div className="reveal" style={{ transitionDelay: '.18s' }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 'var(--r)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text)', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>Lista da semana · Família Silva</div>
-            <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Editando agora</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: 'rgba(61,170,42,.06)', border: '1px solid var(--green-border)', borderRadius: 'var(--r-sm)' }}>
-              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg,#60A5FA,#2563EB)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 800, color: '#fff', flexShrink: 0 }}>A</div>
-              <div style={{ flex: 1, fontSize: '12px', color: 'var(--text-sub)' }}><strong style={{ color: 'var(--text)' }}>Ana</strong> está no Atacadão agora</div>
-              <div style={{ fontSize: '10px', color: 'var(--green-lt)' }}>● ao vivo</div>
+          <div className="fc-list">
+            <div className="fc-list-title">Lista da semana · Família Silva</div>
+            <div className="fc-list-sublabel">Editando agora</div>
+            <div className="fc-list-active">
+              <div className="fc-list-av">A</div>
+              <div className="fc-list-active-info">
+                <strong>Ana</strong> está no Atacadão agora
+              </div>
+              <div className="fc-list-live">● ao vivo</div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div className="fc-list-items">
               {[
                 { label: 'Arroz 5kg', done: true, by: 'marcado por Ana' },
                 { label: 'Feijão 2kg', done: true, by: 'marcado por Ana' },
-                { label: 'Frango peito 1kg', done: false },
+                { label: 'Frango peito 1kg', done: false, by: undefined },
               ].map((item) => (
-                <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: item.done ? '1px solid var(--border)' : 'none' }}>
+                <div key={item.label} className={`fc-list-item${item.done ? ' done' : ''}`}>
                   {item.done ? (
-                    <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'var(--green-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round"><polyline points="1.5,5 4,7.5 8.5,2" /></svg>
+                    <div className="fc-list-check">
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round">
+                        <polyline points="1.5,5 4,7.5 8.5,2" />
+                      </svg>
                     </div>
                   ) : (
-                    <div style={{ width: '18px', height: '18px', borderRadius: '50%', border: '2px solid var(--border2)', flexShrink: 0 }} />
+                    <div className="fc-list-circle" />
                   )}
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: item.done ? 'var(--text-muted)' : 'var(--text)', textDecoration: item.done ? 'line-through' : 'none' }}>{item.label}</span>
-                  {item.by && <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: 'auto' }}>{item.by}</span>}
+                  <span className={`fc-list-item-name${item.done ? ' done' : ''}`}>{item.label}</span>
+                  {item.by && <span className="fc-list-item-by">{item.by}</span>}
                 </div>
               ))}
             </div>

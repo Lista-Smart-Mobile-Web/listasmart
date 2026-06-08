@@ -8,7 +8,7 @@ export default function Testimonials() {
 
       <div className="testi-layout">
         <div className="testi-featured reveal" style={{ transitionDelay: '.1s' }}>
-          <div className="tf-stars">★★★★★</div>
+          <div className="tf-stars" role="img" aria-label="5 de 5 estrelas">★★★★★</div>
           <div className="tf-text">
             "Em três meses de uso, calculamos que economizamos mais de R$ 580 só mudando de supermercado para comprar itens específicos. O app me mostrou que o Atacadão tem o melhor preço no arroz e feijão, mas o Extra é mais barato nos laticínios. Nunca tinha parado pra pensar nisso."
           </div>
@@ -50,7 +50,7 @@ export default function Testimonials() {
                 <div>
                   <div className="tl-name">{t.name}</div>
                   <div className="tl-role">{t.role}</div>
-                  <div className="tl-stars">★★★★★</div>
+                  <div className="tl-stars" role="img" aria-label="5 de 5 estrelas">★★★★★</div>
                 </div>
               </div>
             </div>

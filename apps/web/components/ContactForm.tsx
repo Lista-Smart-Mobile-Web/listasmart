@@ -41,7 +41,6 @@ export default function ContactForm() {
     setStatus("loading");
     setErrorMsg("");
 
-    // Basic client-side validation
     if (!form.storeName || !form.city || !form.contactName || !form.phone || !form.email || !form.storeCount) {
       setErrorMsg("Preencha todos os campos obrigatórios.");
       setStatus("error");
@@ -67,11 +66,12 @@ export default function ContactForm() {
 
       setStatus("success");
       setForm(INITIAL);
-    } catch (err: any) {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro inesperado. Tente novamente.";
       setErrorMsg(
-        err.message === "Failed to fetch"
+        message === "Failed to fetch"
           ? "Não foi possível conectar ao servidor. Tente novamente mais tarde."
-          : err.message ?? "Erro inesperado. Tente novamente."
+          : message
       );
       setStatus("error");
     }
@@ -91,10 +91,10 @@ export default function ContactForm() {
           }}
         >
           <div style={{ fontSize: "3rem" }}>✅</div>
-          <div className="cf-title" style={{ color: "var(--green-lt, #4ade80)" }}>
+          <div className="cf-title" style={{ color: "var(--green-lt)" }}>
             Mensagem enviada!
           </div>
-          <p style={{ color: "var(--text-secondary, #9ca3af)", maxWidth: 420 }}>
+          <p style={{ color: "var(--text-sub)", maxWidth: 420 }}>
             Obrigado pelo interesse. Nossa equipe entrará em contato em até{" "}
             <strong>1 dia útil</strong>.
           </p>
@@ -120,10 +120,11 @@ export default function ContactForm() {
       <form onSubmit={handleSubmit} noValidate>
         <div className="cf-grid">
           <div className="cf-field">
-            <label className="cf-label">
+            <label className="cf-label" htmlFor="f-storeName">
               Nome do estabelecimento <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <input
+              id="f-storeName"
               className="cf-input"
               type="text"
               placeholder="Ex: Supermercado Bom Preço"
@@ -134,10 +135,11 @@ export default function ContactForm() {
           </div>
 
           <div className="cf-field">
-            <label className="cf-label">
+            <label className="cf-label" htmlFor="f-city">
               Cidade / Estado <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <input
+              id="f-city"
               className="cf-input"
               type="text"
               placeholder="Ex: São Paulo, SP"
@@ -148,10 +150,11 @@ export default function ContactForm() {
           </div>
 
           <div className="cf-field">
-            <label className="cf-label">
+            <label className="cf-label" htmlFor="f-contactName">
               Nome do responsável <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <input
+              id="f-contactName"
               className="cf-input"
               type="text"
               placeholder="Seu nome completo"
@@ -162,10 +165,11 @@ export default function ContactForm() {
           </div>
 
           <div className="cf-field">
-            <label className="cf-label">
+            <label className="cf-label" htmlFor="f-phone">
               Telefone / WhatsApp <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <input
+              id="f-phone"
               className="cf-input"
               type="tel"
               placeholder="(11) 99999-9999"
@@ -176,10 +180,11 @@ export default function ContactForm() {
           </div>
 
           <div className="cf-field full">
-            <label className="cf-label">
+            <label className="cf-label" htmlFor="f-email">
               E-mail corporativo <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <input
+              id="f-email"
               className="cf-input"
               type="email"
               placeholder="contato@supermercado.com"
@@ -190,10 +195,11 @@ export default function ContactForm() {
           </div>
 
           <div className="cf-field full">
-            <label className="cf-label">
+            <label className="cf-label" htmlFor="f-storeCount">
               Número de lojas <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <select
+              id="f-storeCount"
               className="cf-select"
               value={form.storeCount}
               onChange={(e) => update("storeCount", e.target.value)}
@@ -210,8 +216,9 @@ export default function ContactForm() {
           </div>
 
           <div className="cf-field full">
-            <label className="cf-label">Mensagem (opcional)</label>
+            <label className="cf-label" htmlFor="f-message">Mensagem (opcional)</label>
             <textarea
+              id="f-message"
               className="cf-textarea"
               placeholder="Conte um pouco sobre o seu negócio ou suas principais dúvidas..."
               value={form.message}

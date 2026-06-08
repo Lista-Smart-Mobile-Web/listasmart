@@ -16,10 +16,25 @@ const dmMono = DM_Mono({
   variable: '--font-mono-text',
 })
 
+const TITLE = 'Lista Smart — Economize nas compras do supermercado'
+const DESCRIPTION =
+  'A Lista Smart compara os preços da sua lista em supermercados da sua cidade e indica onde comprar pelo menor preço. Economize até R$ 400 por mês.'
+
 export const metadata: Metadata = {
-  title: 'Lista Smart — Economize nas compras do supermercado',
-  description:
-    'A Lista Smart compara os preços da sua lista em supermercados da sua cidade e indica onde comprar pelo menor preço. Economize até R$ 400 por mês.',
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    type: 'website',
+    locale: 'pt_BR',
+    siteName: 'Lista Smart',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

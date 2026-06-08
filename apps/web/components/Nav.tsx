@@ -12,6 +12,7 @@ const LINKS = [
 export default function Nav() {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
+  const [activeId, setActiveId] = useState('')
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 40)
@@ -23,6 +24,23 @@ export default function Nav() {
     document.body.style.overflow = open ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [open])
+
+  useEffect(() => {
+    const sectionIds = LINKS.map(l => l.href.slice(1))
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(e => {
+          if (e.isIntersecting) setActiveId(e.target.id)
+        })
+      },
+      { rootMargin: '-40% 0px -55% 0px' }
+    )
+    sectionIds.forEach(id => {
+      const el = document.getElementById(id)
+      if (el) obs.observe(el)
+    })
+    return () => obs.disconnect()
+  }, [])
 
   const close = () => setOpen(false)
 
@@ -40,7 +58,11 @@ export default function Nav() {
 
         <ul className="nav-links">
           {LINKS.map((l) => (
-            <li key={l.href}><a href={l.href}>{l.label}</a></li>
+            <li key={l.href}>
+              <a href={l.href} className={activeId === l.href.slice(1) ? 'active' : ''}>
+                {l.label}
+              </a>
+            </li>
           ))}
         </ul>
 
