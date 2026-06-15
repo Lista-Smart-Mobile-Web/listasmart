@@ -6,10 +6,12 @@
     "seed": "ts-node src/seed.ts"
   },
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "dotenv": "^16.0.0",
     "pg": "^8.11.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.0",
     "@types/node": "^20",
     "@types/pg": "^8.11.0",
     "ts-node": "^10.9.0",

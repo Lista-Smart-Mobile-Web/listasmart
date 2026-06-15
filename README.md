@@ -1,78 +1,64 @@
-# Lista Smart — Monorepo
+# Lista Smart
 
-Plataforma para comparação colaborativa de preços em supermercados.  
-App mobile único com dois fluxos de login · Landing page institucional · Backend compartilhado.
-
----
-
-## Dois fluxos dentro do mesmo app mobile
-
-O app mobile detecta o tipo de conta no login e redireciona para a experiência correta:
-
-| Tipo de conta | Experiência |
-|---------------|-------------|
-| Usuário comum | App do consumidor — listas, scanner, comparação de preços, ranking, dashboard de inteligência pessoal |
-| Supermercado parceiro | Portal do parceiro — dashboard operacional, relatórios, promoções, comparação de competitividade |
-
-> **Nunca há dois apps separados.** O login determina qual fluxo de telas o usuário verá.
-
----
-
-## Estrutura do repositório
-
-```
-listasmart/
-├── apps/
-│   ├── mobile/          → React Native + Expo — app único, dois fluxos (P1)
-│   └── web/             → Next.js 14 — landing page institucional (P2)
-├── packages/
-│   ├── api/             → Node.js + Express — backend compartilhado (P3)
-│   ├── database/        → schema, migrations, seeds (P3)
-│   └── shared/          → tipos TypeScript, validações zod (P3 define · todos importam)
-└── docs/
-    ├── api.md           → contratos de API
-    └── decisions.md     → registro de decisões técnicas
-```
-
----
-
-## Divisão de responsabilidades
-
-| Pessoa | Área | Pastas |
-|--------|------|--------|
-| P1 | App mobile (consumidor + parceiro) | `apps/mobile/` |
-| P2 | Web (landing page) | `apps/web/` |
-| P3 | Backend + banco + tipos compartilhados | `packages/api/` · `packages/database/` · `packages/shared/` |
+Plataforma colaborativa de comparação de preços em supermercados.  
+App mobile único com dois perfis (consumidor e parceiro) · Landing page institucional · API REST compartilhada.
 
 ---
 
 ## Pré-requisitos
 
-- [Node.js](https://nodejs.org/) >= 18
-- [pnpm](https://pnpm.io/) >= 8 — `npm install -g pnpm`
-- [Expo CLI](https://docs.expo.dev/get-started/installation/) — `npm install -g expo-cli`
-- [PostgreSQL](https://www.postgresql.org/) >= 15 (local ou Docker)
+| Ferramenta | Versão mínima |
+|---|---|
+| Node.js | 18+ |
+| pnpm | 8+ (`npm i -g pnpm`) |
+| PostgreSQL | 15+ |
 
 ---
 
-## Instalação
+## Setup inicial (apenas na primeira vez)
+
+### 1. Instalar dependências
 
 ```bash
-# 1. clonar o repositório
-git clone https://github.com/Lista-Smart-Mobile-Web/listasmart.git
-cd listasmart
-
-# 2. instalar todas as dependências do workspace de uma vez
 pnpm install
+```
 
-# 3. configurar variáveis de ambiente
-cp .env.example .env
-# edite o .env com suas configurações locais
+### 2. Criar o banco de dados
 
-# 4. criar o banco de dados e rodar as migrations
+No **pgAdmin**, clique com botão direito em **Databases → Create → Database** e crie o banco com o nome `listasmart`. Só o banco vazio — as tabelas serão criadas pelo migrate.
+
+### 3. Configurar variáveis de ambiente
+
+Crie o arquivo `.env` na raiz do projeto (`listasmart/.env`):
+
+```env
+DATABASE_URL=postgresql://postgres:SUA_SENHA@localhost:5432/listasmart
+JWT_SECRET=uma_chave_secreta_qualquer_com_pelo_menos_32_chars
+JWT_EXPIRES_IN=30d
+PORT=3001
+CORS_ORIGIN=http://localhost:3000
+NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
+EXPO_PUBLIC_API_URL=http://localhost:3001/api/v1
+```
+
+> Troque `postgres` e `SUA_SENHA` pelo usuário/senha do seu PostgreSQL local.
+
+### 4. Criar as tabelas (migrations)
+
+```bash
 pnpm --filter @listasmart/database migrate
+```
 
-# 5. popular o banco com dados de teste
+Saída esperada:
+```
+  ✓  001__create_tables.sql
+
+✅ Migrations concluídas — 1 aplicadas, 0 ignoradas
+```
+
+### 5. Popular o banco com dados de teste
+
+```bash
 pnpm --filter @listasmart/database seed
 ```
 
@@ -80,143 +66,148 @@ pnpm --filter @listasmart/database seed
 
 ## Rodando o projeto
 
-Cada parte pode ser iniciada separadamente:
+### Backend (API)
 
 ```bash
-# backend (API)
+# No terminal do IntelliJ ou VSCode, da raiz do monorepo:
 pnpm --filter @listasmart/api dev
-# disponível em http://localhost:3001
 
-# web (Next.js)
+# API disponível em: http://localhost:3001
+```
+
+### Frontend web (landing page)
+
+```bash
 pnpm --filter @listasmart/web dev
-# disponível em http://localhost:3000
 
-# mobile (Expo)
+# Disponível em: http://localhost:3000
+```
+
+### App mobile (Expo)
+
+```bash
 pnpm --filter @listasmart/mobile start
-# escaneie o QR Code com o app Expo Go
+
+# Escaneie o QR Code com o Expo Go no celular
 ```
 
-Ou tudo ao mesmo tempo com Turborepo:
+---
+
+## Verificação rápida
+
+Com a API rodando, teste o login pelo terminal:
 
 ```bash
-pnpm dev
+curl -X POST http://localhost:3001/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"dev@listasmart.com\",\"password\":\"senha123\"}"
+```
+
+Deve retornar `{ "user": {...}, "token": "..." }`.
+
+---
+
+## Usuários de teste (criados pelo seed)
+
+| E-mail | Senha | Perfil |
+|---|---|---|
+| `dev@listasmart.com` | `senha123` | Consumidor |
+| `maria@example.com` | `senha123` | Consumidor (colaboradora, 380 pts) |
+| `joao@example.com` | `senha123` | Consumidor (colaborador, 260 pts) |
+| `parceiro@atacadao.com` | `admin123` | Parceiro (Atacadão Vila Madalena) |
+
+---
+
+## Migrations versionadas
+
+As migrations ficam em `packages/database/src/migrations/` com numeração sequencial.
+
+```
+001__create_tables.sql   ← schema inicial
+002__nome_da_mudanca.sql ← futuras alterações
+```
+
+Para criar uma nova migration:
+1. Crie o arquivo `00N__descricao.sql` na pasta de migrations
+2. Execute `pnpm --filter @listasmart/database migrate`
+
+O runner controla quais migrations já foram aplicadas na tabela `schema_migrations`. Rodar o comando de novo é seguro — migrations já aplicadas são ignoradas.
+
+---
+
+## Portas
+
+| Serviço | Porta |
+|---|---|
+| API (backend) | 3001 |
+| Web (Next.js) | 3000 |
+| Mobile (Expo) | 8081 |
+| PostgreSQL | 5432 |
+
+---
+
+## Estrutura
+
+```
+listasmart/
+├── apps/
+│   ├── mobile/          → React Native + Expo (dois fluxos: consumer / partner)
+│   └── web/             → Next.js 14 — landing page institucional
+├── packages/
+│   ├── api/             → Node.js + Express — todas as rotas
+│   ├── database/        → migrations, seed, schema
+│   └── shared/          → tipos TypeScript + schemas Zod (importados por todos)
+└── docs/
+    └── context.md       → regras de negócio e decisões técnicas
 ```
 
 ---
 
-## Variáveis de ambiente
+## Rotas da API
 
-Copie `.env.example` para `.env` e preencha:
-
-```env
-# banco de dados
-DATABASE_URL=postgresql://usuario:senha@localhost:5432/listasmart
-
-# autenticação JWT (único segredo — role incluso no token)
-JWT_SECRET=sua_chave_secreta_aqui
-JWT_EXPIRES_IN=7d
-
-# API (usada pelo web e mobile)
-NEXT_PUBLIC_API_URL=http://localhost:3001
-EXPO_PUBLIC_API_URL=http://localhost:3001
-```
-
-> **Nunca commite o arquivo `.env` real.** Ele já está no `.gitignore`.
-
----
-
-## Fluxo de trabalho com Git
-
-### Branches
-
-Cada funcionalidade deve ser desenvolvida em uma branch separada:
+Base: `http://localhost:3001/api/v1`
 
 ```
-main                        → código estável, sempre funciona
-feat/mobile-scanner         → nova funcionalidade
-feat/portal-parceiro        → nova funcionalidade
-fix/api-contributions       → correção de bug
+POST   /auth/register
+POST   /auth/login
+
+GET    /users/me
+PATCH  /users/me
+GET    /users/me/badges
+
+GET    /lists
+POST   /lists
+GET    /lists/:id
+GET    /lists/:id/items
+POST   /lists/:id/items
+PATCH  /lists/:id/items/:itemId
+DELETE /lists/:id/items/:itemId
+
+GET    /products
+GET    /products/:id
+GET    /products/:id/prices
+
+GET    /prices/compare?product_id=&lat=&lng=&radius=
+
+POST   /contributions
+GET    /contributions/history
+
+GET    /markets
+GET    /markets/:id
+GET    /markets/:id/prices
+GET    /markets/:id/promotions
+GET    /markets/:id/dashboard    (role: partner)
+POST   /markets/:id/promotions   (role: partner)
+DELETE /markets/:id/promotions/:promoId (role: partner)
+GET    /markets/:id/report       (role: partner, retorna CSV)
+
+GET    /ranking
+
+GET    /analytics/overview       (role: consumer)
+GET    /analytics/prices?product_id=&period=30d
+GET    /analytics/markets        (role: partner)
+
+POST   /scanner/nfe
+
+POST   /leads
 ```
-
-### Convenção de commits
-
-```
-feat: adiciona scanner de QR Code
-fix: corrige validação de preço no backend
-chore: atualiza dependências
-docs: adiciona contrato da rota /contributions
-```
-
-### Fluxo padrão
-
-```bash
-# 1. sempre partir da main atualizada
-git checkout main
-git pull
-
-# 2. criar branch para a funcionalidade
-git checkout -b feat/nome-da-funcionalidade
-
-# 3. desenvolver, commitar com mensagens descritivas
-git add .
-git commit -m "feat: descrição do que foi feito"
-
-# 4. enviar para o GitHub
-git push origin feat/nome-da-funcionalidade
-
-# 5. abrir Pull Request no GitHub para mesclar na main
-```
-
-> **Nunca faça push direto na `main`.** Todo código entra via Pull Request.
-
----
-
-## Pacote shared — tipos compartilhados
-
-O arquivo `packages/shared/src/types.ts` define as interfaces TypeScript usadas pelos três projetos. Qualquer mudança nele afeta mobile e web imediatamente.
-
-```typescript
-// exemplo de importação no mobile ou web
-import type { Product, Market, Contribution } from '@listasmart/shared'
-```
-
-Antes de alterar tipos no `shared`, avise a equipe — é o arquivo com maior impacto no projeto.
-
----
-
-## Prioridade na semana 1
-
-O P3 precisa entregar antes dos outros poderem integrar:
-
-- [ ] Schema do banco criado e migrations rodando
-- [ ] Rotas `/auth/register` e `/auth/login` funcionando (com campo `role`: `consumer` | `partner`)
-- [ ] Arquivo `packages/shared/src/types.ts` com os tipos base
-- [ ] `.env.example` atualizado
-
-Só depois disso o P1 e P2 conseguem começar a integrar com a API.
-
----
-
-## Tecnologias
-
-| Camada | Tecnologia |
-|--------|-----------|
-| Mobile (consumidor + parceiro) | React Native · Expo · expo-router · Zustand · React Query · SQLite |
-| Web (landing) | Next.js 14 · Tailwind CSS · Framer Motion |
-| Backend | Node.js · Express · JWT (com `role`) · Zod |
-| Banco | PostgreSQL · (SQLite local no mobile) |
-| Monorepo | pnpm workspaces · Turborepo |
-
----
-
-## Documentação
-
-- [`docs/api.md`](./docs/api.md) — contratos completos de cada rota da API
-- [`docs/decisions.md`](./docs/decisions.md) — registro de decisões técnicas e justificativas
-
----
-
-## Equipe
-
-Projeto desenvolvido para as disciplinas de **Engenharia de Software** e **Programação para Dispositivos Móveis**.  
-Case baseado na startup [Lista Smart](https://listasmart.com.br).
