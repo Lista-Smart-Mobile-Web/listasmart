@@ -1,68 +1,98 @@
-import { useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, TextInput, Alert } from 'react-native'
+import { useState, useEffect, useCallback } from 'react'
+import {
+  View, Text, StyleSheet, TouchableOpacity, Modal, Pressable,
+  TextInput, FlatList, ActivityIndicator, ScrollView,
+} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import { Ionicons } from '@expo/vector-icons'
 import { useSubmitContribution } from '@hooks/useContributions'
-import { Button, Card } from '@components/ui'
+import { useProductByBarcode, useProductSearch } from '@hooks/useProducts'
+import { useMarkets } from '@hooks/useMarkets'
+import { Button } from '@components/ui'
 import { Colors, Typography, Spacing, Radius } from '@constants/index'
+import type { Product, Market } from '@/types'
 
-// Pontuação por ação (definida em docs/context.md):
-// QR Code completo: +30 pts | Manual: +10 pts | Confirmar: +5 pts
-
-type Mode = 'scan' | 'manual'
-
-interface ManualForm {
-  productName: string
-  marketName: string
-  price: string
-}
+type Screen = 'camera' | 'search' | 'price'
 
 export default function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions()
   const [scanned, setScanned] = useState(false)
-  const [mode, setMode] = useState<Mode>('scan')
-  const [manualModal, setManualModal] = useState(false)
-  const [form, setForm] = useState<ManualForm>({ productName: '', marketName: '', price: '' })
-  const [lastScan, setLastScan] = useState<string | null>(null)
+  const [screen, setScreen] = useState<Screen>('camera')
+  const [barcode, setBarcode] = useState<string | null>(null)
+  const [searchText, setSearchText] = useState('')
+  const [product, setProduct] = useState<Product | null>(null)
+  const [market, setMarket] = useState<Market | null>(null)
+  const [price, setPrice] = useState('')
+  const [success, setSuccess] = useState(false)
 
   const submitContribution = useSubmitContribution()
+  const barcodeQuery = useProductByBarcode(barcode)
+  const searchQuery = useProductSearch(searchText)
+  const marketsQuery = useMarkets()
 
-  async function handleBarcode({ data }: { data: string }) {
-    if (scanned) return
-    setScanned(true)
-    setLastScan(data)
-    // TODO: quando backend estiver disponível, buscar produto por barcode
-    // GET /products?barcode=<data>
-    // Se encontrado → mostrar info do produto + opção de confirmar preço
-    // Se não encontrado → abrir modal manual com barcode preenchido
-    Alert.alert(
-      'Código escaneado',
-      `Código: ${data}\n\nProduto não encontrado no sistema ainda.\nCadastre o preço manualmente para ganhar +10 pts.`,
-      [
-        { text: 'Cadastrar preço', onPress: () => { setManualModal(true); setScanned(false) } },
-        { text: 'Escanear outro', onPress: () => setScanned(false) },
-      ]
-    )
+  // When barcode lookup finishes, navigate to the appropriate screen
+  useEffect(() => {
+    if (!barcode || barcodeQuery.isLoading) return
+    if (barcodeQuery.data) {
+      setProduct(barcodeQuery.data)
+      setScreen('price')
+    } else {
+      setScreen('search')
+    }
+  }, [barcode, barcodeQuery.isLoading, barcodeQuery.data])
+
+  const handleBarcode = useCallback(
+    ({ data }: { data: string }) => {
+      if (scanned || screen !== 'camera') return
+      setScanned(true)
+      setBarcode(data)
+    },
+    [scanned, screen],
+  )
+
+  function openManual() {
+    setBarcode(null)
+    setSearchText('')
+    setScreen('search')
   }
 
-  async function handleManualSubmit() {
-    const price = parseFloat(form.price.replace(',', '.'))
-    if (!form.productName || !form.marketName || isNaN(price)) {
-      Alert.alert('Preencha todos os campos')
-      return
-    }
-    // TODO: quando backend disponível, buscar IDs reais de produto e mercado
-    // Por ora envia os nomes — backend precisa de productId e marketId reais
+  function selectProduct(p: Product) {
+    setProduct(p)
+    setMarket(null)
+    setPrice('')
+    setScreen('price')
+  }
+
+  function closeAll() {
+    setScreen('camera')
+    setScanned(false)
+    setBarcode(null)
+    setSearchText('')
+    setProduct(null)
+    setMarket(null)
+    setPrice('')
+    setSuccess(false)
+  }
+
+  function submit() {
+    if (!product || !market) return
+    const numPrice = parseFloat(price.replace(',', '.'))
+    if (isNaN(numPrice) || numPrice <= 0) return
+
     submitContribution.mutate(
-      { type: 'manual', price },
+      {
+        type: barcode ? 'qr_code' : 'manual',
+        productId: product.id,
+        marketId: market.id,
+        price: numPrice,
+      },
       {
         onSuccess: () => {
-          setManualModal(false)
-          setForm({ productName: '', marketName: '', price: '' })
-          Alert.alert('✅ Contribuição enviada!', '+10 pontos adicionados ao seu perfil.')
+          setSuccess(true)
+          setTimeout(closeAll, 2500)
         },
-      }
+      },
     )
   }
 
@@ -74,7 +104,9 @@ export default function ScannerScreen() {
         <View style={styles.center}>
           <Ionicons name="camera-outline" size={56} color={Colors.textMuted} />
           <Text style={styles.permTitle}>Câmera necessária</Text>
-          <Text style={styles.permText}>Para escanear cupons e ganhar pontos, permita o acesso à câmera.</Text>
+          <Text style={styles.permText}>
+            Para escanear produtos e ganhar pontos, permita o acesso à câmera.
+          </Text>
           <Button label="Permitir câmera" onPress={requestPermission} style={{ marginTop: Spacing.lg }} />
         </View>
       </SafeAreaView>
@@ -86,16 +118,16 @@ export default function ScannerScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Scanner</Text>
-        <TouchableOpacity style={styles.manualBtn} onPress={() => setManualModal(true)}>
+        <TouchableOpacity style={styles.manualBtn} onPress={openManual}>
           <Ionicons name="create-outline" size={16} color={Colors.primaryLight} />
           <Text style={styles.manualBtnText}>Manual</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Info de pontuação */}
+      {/* Points info chips */}
       <View style={styles.ptsRow}>
         <View style={styles.ptsChip}>
-          <Text style={styles.ptsLabel}>QR fiscal</Text>
+          <Text style={styles.ptsLabel}>Código de barras</Text>
           <Text style={styles.ptsValue}>+30 pts</Text>
         </View>
         <View style={styles.ptsChip}>
@@ -108,14 +140,15 @@ export default function ScannerScreen() {
         </View>
       </View>
 
-      {/* Câmera */}
+      {/* Camera view */}
       <View style={styles.cameraWrap}>
         <CameraView
           style={StyleSheet.absoluteFillObject}
           onBarcodeScanned={handleBarcode}
           barcodeScannerSettings={{ barcodeTypes: ['qr', 'ean13', 'ean8', 'code128'] }}
         />
-        {/* Frame overlay */}
+
+        {/* Aiming frame corners */}
         <View style={styles.frameOuter}>
           <View style={styles.frame}>
             <View style={[styles.corner, styles.cornerTL]} />
@@ -124,45 +157,157 @@ export default function ScannerScreen() {
             <View style={[styles.corner, styles.cornerBR]} />
           </View>
         </View>
+
+        {/* Loading overlay while barcode lookup is in-flight */}
+        {scanned && barcodeQuery.isLoading && (
+          <View style={styles.lookupOverlay}>
+            <ActivityIndicator color={Colors.primaryLight} size="large" />
+            <Text style={styles.lookupText}>Buscando produto…</Text>
+          </View>
+        )}
+
         <View style={styles.hint}>
-          <Text style={styles.hintText}>Aponte para o código de barras ou QR do cupom fiscal</Text>
+          <Text style={styles.hintText}>Aponte para o código de barras do produto</Text>
         </View>
       </View>
 
-      {/* Modal cadastro manual */}
-      <Modal visible={manualModal} transparent animationType="slide" onRequestClose={() => setManualModal(false)}>
-        <Pressable style={styles.overlay} onPress={() => setManualModal(false)}>
-          <Pressable style={styles.modal} onPress={() => {}}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Cadastrar preço manualmente</Text>
-            <Text style={styles.modalSub}>+10 pontos pela contribuição</Text>
+      {/* ── Search Modal ──────────────────────────────────────── */}
+      <Modal
+        visible={screen === 'search'}
+        transparent
+        animationType="slide"
+        onRequestClose={closeAll}
+      >
+        <Pressable style={styles.overlay} onPress={closeAll}>
+          <Pressable style={styles.sheet} onPress={() => {}}>
+            <View style={styles.handle} />
+            <Text style={styles.sheetTitle}>Buscar produto</Text>
 
-            {[
-              { key: 'productName', label: 'Produto', placeholder: 'Ex: Arroz 5kg Tio João' },
-              { key: 'marketName', label: 'Supermercado', placeholder: 'Ex: Atacadão Centro' },
-              { key: 'price', label: 'Preço (R$)', placeholder: '0,00', keyboard: 'decimal-pad' as const },
-            ].map((field) => (
-              <View key={field.key} style={styles.fieldWrap}>
-                <Text style={styles.fieldLabel}>{field.label}</Text>
-                <TextInput
-                  style={styles.fieldInput}
-                  placeholder={field.placeholder}
-                  placeholderTextColor={Colors.textMuted}
-                  keyboardType={field.keyboard ?? 'default'}
-                  value={form[field.key as keyof ManualForm]}
-                  onChangeText={(v) => setForm((f) => ({ ...f, [field.key]: v }))}
-                />
-              </View>
-            ))}
-
-            <Button
-              label={submitContribution.isPending ? 'Enviando…' : 'Enviar contribuição'}
-              loading={submitContribution.isPending}
-              fullWidth
-              size="lg"
-              style={{ marginTop: Spacing.sm }}
-              onPress={handleManualSubmit}
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Digite o nome do produto…"
+              placeholderTextColor={Colors.textMuted}
+              value={searchText}
+              onChangeText={setSearchText}
+              autoFocus
             />
+
+            {searchQuery.isLoading && (
+              <ActivityIndicator color={Colors.primaryLight} style={{ marginVertical: Spacing.lg }} />
+            )}
+
+            {searchText.length >= 2 && !searchQuery.isLoading && !searchQuery.data?.length && (
+              <Text style={styles.emptyText}>Nenhum produto encontrado</Text>
+            )}
+
+            {searchText.length < 2 && (
+              <Text style={styles.emptyText}>Digite ao menos 2 letras para buscar</Text>
+            )}
+
+            <FlatList
+              data={searchQuery.data ?? []}
+              keyExtractor={(item) => item.id}
+              style={styles.resultList}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <TouchableOpacity style={styles.productRow} onPress={() => selectProduct(item)}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.productName}>{item.name}</Text>
+                    <Text style={styles.productMeta}>{item.category} · {item.unit}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+                </TouchableOpacity>
+              )}
+              ItemSeparatorComponent={() => <View style={styles.separator} />}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ── Market + Price Modal ──────────────────────────────── */}
+      <Modal
+        visible={screen === 'price'}
+        transparent
+        animationType="slide"
+        onRequestClose={closeAll}
+      >
+        <Pressable style={styles.overlay} onPress={closeAll}>
+          <Pressable style={styles.sheet} onPress={() => {}}>
+            <View style={styles.handle} />
+
+            {success ? (
+              <View style={styles.successBox}>
+                <Ionicons name="checkmark-circle" size={56} color={Colors.success} />
+                <Text style={styles.successTitle}>Contribuição enviada!</Text>
+                <Text style={styles.successSub}>
+                  +{barcode ? '30' : '10'} pontos adicionados ao seu perfil
+                </Text>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                {/* Selected product */}
+                {product && (
+                  <View style={styles.productCard}>
+                    <Text style={styles.productCardLabel}>Produto selecionado</Text>
+                    <Text style={styles.productCardName}>{product.name}</Text>
+                    <Text style={styles.productCardMeta}>{product.category} · {product.unit}</Text>
+                  </View>
+                )}
+
+                {/* Market selection */}
+                <Text style={styles.sectionLabel}>Selecione o supermercado</Text>
+                {marketsQuery.isLoading ? (
+                  <ActivityIndicator color={Colors.primaryLight} style={{ marginBottom: Spacing.md }} />
+                ) : !marketsQuery.data?.length ? (
+                  <Text style={styles.emptyText}>Nenhum supermercado cadastrado</Text>
+                ) : (
+                  <View style={styles.marketList}>
+                    {marketsQuery.data.map((m, i) => (
+                      <TouchableOpacity
+                        key={m.id}
+                        style={[
+                          styles.marketRow,
+                          market?.id === m.id && styles.marketRowActive,
+                          i > 0 && styles.marketRowBorder,
+                        ]}
+                        onPress={() => setMarket(m)}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.marketName, market?.id === m.id && styles.marketNameActive]}>
+                            {m.name}
+                          </Text>
+                          <Text style={styles.marketCity}>{m.city}</Text>
+                        </View>
+                        {market?.id === m.id && (
+                          <Ionicons name="checkmark-circle" size={20} color={Colors.primaryLight} />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {/* Price input */}
+                <Text style={[styles.sectionLabel, { marginTop: Spacing.lg }]}>Preço (R$)</Text>
+                <TextInput
+                  style={styles.priceInput}
+                  placeholder="0,00"
+                  placeholderTextColor={Colors.textMuted}
+                  keyboardType="decimal-pad"
+                  value={price}
+                  onChangeText={setPrice}
+                />
+
+                <Button
+                  label={submitContribution.isPending ? 'Enviando…' : 'Enviar contribuição'}
+                  loading={submitContribution.isPending}
+                  fullWidth
+                  size="lg"
+                  style={{ marginTop: Spacing.md, marginBottom: Spacing.xxl }}
+                  disabled={!product || !market || !price || submitContribution.isPending}
+                  onPress={submit}
+                />
+              </ScrollView>
+            )}
           </Pressable>
         </Pressable>
       </Modal>
@@ -170,10 +315,13 @@ export default function ScannerScreen() {
   )
 }
 
-const CORNER = 20
+const CORNER = 22
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.bg },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xxl, gap: Spacing.md },
+  center: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: Spacing.xxl, gap: Spacing.md,
+  },
   permTitle: { fontSize: Typography.xl, fontWeight: Typography.bold, color: Colors.text, textAlign: 'center' },
   permText: { fontSize: Typography.sm, color: Colors.textSecondary, textAlign: 'center' },
 
@@ -205,29 +353,85 @@ const styles = StyleSheet.create({
   cornerTR: { top: 0, right: 0, borderLeftWidth: 0, borderBottomWidth: 0 },
   cornerBL: { bottom: 0, left: 0, borderRightWidth: 0, borderTopWidth: 0 },
   cornerBR: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0 },
+
+  lookupOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(12,10,8,0.85)',
+    alignItems: 'center', justifyContent: 'center', gap: Spacing.md,
+  },
+  lookupText: { color: Colors.text, fontSize: Typography.base },
+
   hint: {
     position: 'absolute', bottom: Spacing.xxl, left: Spacing.xxl, right: Spacing.xxl,
     backgroundColor: 'rgba(12,10,8,0.75)', borderRadius: Radius.md, padding: Spacing.md,
   },
   hintText: { color: Colors.text, fontSize: Typography.sm, textAlign: 'center' },
 
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-  modal: {
-    backgroundColor: Colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    borderWidth: 1, borderColor: Colors.border, padding: Spacing.xxl, gap: Spacing.md,
-    paddingBottom: 40,
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
+  sheet: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: Spacing.xxl, paddingTop: Spacing.md, paddingBottom: 8,
+    maxHeight: '88%',
   },
-  modalHandle: {
+  handle: {
     width: 36, height: 4, backgroundColor: Colors.border, borderRadius: 2,
-    alignSelf: 'center', marginBottom: Spacing.sm,
+    alignSelf: 'center', marginBottom: Spacing.lg,
   },
-  modalTitle: { fontSize: Typography.lg, fontWeight: Typography.bold, color: Colors.text },
-  modalSub: { fontSize: Typography.sm, color: Colors.primaryLight },
-  fieldWrap: { gap: Spacing.xs },
-  fieldLabel: { fontSize: Typography.sm, fontWeight: Typography.semibold, color: Colors.textSecondary },
-  fieldInput: {
+  sheetTitle: {
+    fontSize: Typography.lg, fontWeight: Typography.bold, color: Colors.text,
+    marginBottom: Spacing.md,
+  },
+
+  searchInput: {
     backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.borderMed,
     borderRadius: Radius.md, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
-    fontSize: Typography.base, color: Colors.text,
+    fontSize: Typography.base, color: Colors.text, marginBottom: Spacing.md,
   },
+  resultList: { maxHeight: 360 },
+  emptyText: { fontSize: Typography.sm, color: Colors.textMuted, textAlign: 'center', marginTop: Spacing.lg, marginBottom: Spacing.lg },
+
+  productRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.md, gap: Spacing.sm },
+  productName: { fontSize: Typography.base, color: Colors.text, fontWeight: Typography.semibold },
+  productMeta: { fontSize: Typography.sm, color: Colors.textSecondary, marginTop: 2 },
+  separator: { height: 1, backgroundColor: Colors.border },
+
+  productCard: {
+    backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.primaryBorder,
+    borderRadius: Radius.md, padding: Spacing.lg, marginBottom: Spacing.lg, gap: 2,
+  },
+  productCardLabel: { fontSize: Typography.xs, color: Colors.primaryLight, fontWeight: Typography.semibold },
+  productCardName: { fontSize: Typography.base, color: Colors.text, fontWeight: Typography.bold },
+  productCardMeta: { fontSize: Typography.sm, color: Colors.textSecondary },
+
+  sectionLabel: {
+    fontSize: Typography.sm, fontWeight: Typography.semibold, color: Colors.textSecondary,
+    marginBottom: Spacing.sm,
+  },
+
+  marketList: {
+    borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md,
+    overflow: 'hidden', marginBottom: Spacing.md,
+  },
+  marketRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
+    gap: Spacing.sm, backgroundColor: Colors.bg,
+  },
+  marketRowActive: { backgroundColor: Colors.primaryDim },
+  marketRowBorder: { borderTopWidth: 1, borderTopColor: Colors.border },
+  marketName: { fontSize: Typography.base, color: Colors.textSecondary, fontWeight: Typography.semibold },
+  marketNameActive: { color: Colors.primaryLight },
+  marketCity: { fontSize: Typography.xs, color: Colors.textMuted, marginTop: 1 },
+
+  priceInput: {
+    backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.borderMed,
+    borderRadius: Radius.md, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
+    fontSize: Typography.xl, color: Colors.text, fontWeight: Typography.bold, textAlign: 'center',
+  },
+
+  successBox: { alignItems: 'center', paddingVertical: Spacing.xxxl, gap: Spacing.md },
+  successTitle: { fontSize: Typography.xl, fontWeight: Typography.extrabold, color: Colors.text },
+  successSub: { fontSize: Typography.base, color: Colors.primaryLight },
 })
