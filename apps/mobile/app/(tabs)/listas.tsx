@@ -1,33 +1,25 @@
 import { useState } from 'react'
 import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet,
-  Alert, TextInput, Modal, Pressable,
+  View, Text, FlatList, TouchableOpacity,
+  StyleSheet, Alert, TextInput
 } from 'react-native'
 import { router } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
+
+import { useLists, useDeleteList } from '@hooks/useLists'
 import { useAuthStore } from '@store/useAuthStore'
-import { useLists, useCreateList, useDeleteList } from '@hooks/useLists'
 import { OfflineBanner } from '@components/ui'
 import { Colors, Typography, Spacing, Radius } from '@constants/index'
 import type { ShoppingListLocal } from '@/types'
 
 export default function ListasScreen() {
-  const user = useAuthStore((s) => s.user)
-  const [modalVisible, setModalVisible] = useState(false)
-  const [newListName, setNewListName] = useState('')
-
-  const { lists, isLoading } = useLists()
-  const createList = useCreateList()
+  const { data: lists = [], isLoading } = useLists()
   const deleteList = useDeleteList()
+  const user = useAuthStore((s) => s.user)
+  const [searchQuery, setSearchQuery] = useState('')
 
-  function handleCreate() {
-    const name = newListName.trim()
-    if (!name) return
-    createList.mutate(name)
-    setNewListName('')
-    setModalVisible(false)
-  }
+  const filteredLists = lists.filter(l => l.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
   function confirmDelete(list: ShoppingListLocal) {
     Alert.alert('Excluir lista', `Excluir "${list.name}"?`, [
@@ -42,23 +34,48 @@ export default function ListasScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <OfflineBanner />
 
-      {/* Header */}
+      {/* Global Style Header */}
       <View style={styles.header}>
-        <View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={styles.greeting} numberOfLines={1} adjustsFontSizeToFit>
-              Olá, {user?.name?.split(' ')[0]}
-            </Text>
-            <Ionicons name="hand-left-outline" size={20} color={Colors.amber} />
+        <TouchableOpacity style={styles.headerBtn}>
+          <Ionicons name="notifications-outline" size={24} color={Colors.textSecondary} />
+          {/* Notification dot */}
+          <View style={styles.notifDot} />
+        </TouchableOpacity>
+        
+        <View style={styles.headerCenter}>
+          <View style={styles.logoBox}>
+            <Text style={styles.logoL}>L</Text>
           </View>
-          <Text style={styles.subtitle}>Suas listas de compras</Text>
+          <Text style={styles.appName}>Lista Smart</Text>
         </View>
-        <TouchableOpacity style={styles.notifBtn} onPress={() => {}}>
-          <Ionicons name="notifications-outline" size={22} color={Colors.textSecondary} />
+
+        <TouchableOpacity style={styles.avatarWrap} onPress={() => router.push('/(tabs)/perfil')}>
+          <Text style={styles.avatarText}>{user?.name?.[0]?.toUpperCase() ?? '?'}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Stats bar */}
+      {/* Floating Search Bar */}
+      <View style={styles.searchWrap}>
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={20} color={Colors.textSecondary} style={{ marginLeft: Spacing.md }} />
+          <TextInput
+            placeholder="Buscar listas..."
+            placeholderTextColor={Colors.textMuted}
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          <TouchableOpacity 
+            style={styles.searchPlusBtn} 
+            onPress={() => router.push('/lista/nova')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="add" size={24} color={Colors.primaryLight} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Stats bar (Bento style) */}
       <View style={styles.statsRow}>
         <View style={styles.statChip}>
           <Ionicons name="list" size={14} color={Colors.primaryLight} />
@@ -69,7 +86,7 @@ export default function ListasScreen() {
           <Text style={styles.statText}>{user?.points ?? 0} pts</Text>
         </View>
         <View style={[styles.statChip, { backgroundColor: Colors.primaryDim, borderColor: Colors.primaryBorder }]}>
-          <Text style={[styles.statText, { color: Colors.primaryLight }]}>{user?.level ?? 'iniciante'}</Text>
+          <Text style={[styles.statText, { color: Colors.primaryLight, textTransform: 'capitalize' }]}>{user?.level ?? 'iniciante'}</Text>
         </View>
       </View>
 
@@ -78,83 +95,50 @@ export default function ListasScreen() {
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>Carregando…</Text>
         </View>
-      ) : lists.length === 0 ? (
+      ) : filteredLists.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="bag-outline" size={48} color={Colors.textMuted} />
-          <Text style={styles.emptyTitle}>Nenhuma lista ainda</Text>
-          <Text style={styles.emptyText}>Crie sua primeira lista de compras</Text>
+          <Text style={styles.emptyTitle}>Nenhuma lista encontrada</Text>
         </View>
       ) : (
         <FlatList
-          data={lists}
+          data={filteredLists}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             const total = item.items.length
             const checked = checkedTotal(item)
             const progress = total > 0 ? checked / total : 0
             return (
-              <TouchableOpacity
-                style={styles.card}
-                onPress={() => router.push(`/lista/${item.id}`)}
-                onLongPress={() => confirmDelete(item)}
-                activeOpacity={0.75}
-              >
-                <View style={styles.cardTop}>
-                  <View style={styles.cardIcon}>
-                    <Ionicons name="cart-outline" size={20} color={Colors.primaryLight} />
-                  </View>
-                  <View style={styles.cardInfo}>
+              <View>
+                <TouchableOpacity
+                  style={styles.card}
+                  onPress={() => router.push(`/lista/${item.id}`)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.cardHeader}>
                     <Text style={styles.cardTitle}>{item.name}</Text>
-                    <Text style={styles.cardMeta}>
-                      {total > 0 ? `${checked}/${total} itens` : 'Lista vazia'}
-                      {item._pendingSync ? '  •  pendente sync' : ''}
+                    <TouchableOpacity onPress={() => confirmDelete(item)} style={styles.deleteBtn}>
+                      <Ionicons name="trash-outline" size={18} color={Colors.error} />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.cardDate}>Atualizado em {new Date(item.updatedAt).toLocaleDateString()}</Text>
+
+                  <View style={styles.progressWrap}>
+                    <View style={styles.progressBar}>
+                      <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+                    </View>
+                    <Text style={styles.progressText}>
+                      {checked}/{total} itens
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-                </View>
-                {total > 0 && (
-                  <View style={styles.progressBar}>
-                    <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-                  </View>
-                )}
-              </TouchableOpacity>
+                </TouchableOpacity>
+              </View>
             )
           }}
         />
       )}
-
-      {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)} activeOpacity={0.85}>
-        <Ionicons name="add" size={28} color="#1a0d00" />
-      </TouchableOpacity>
-
-      {/* Modal nova lista */}
-      <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
-        <Pressable style={styles.overlay} onPress={() => setModalVisible(false)}>
-          <Pressable style={styles.modal} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Nova lista</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Nome da lista"
-              placeholderTextColor={Colors.textMuted}
-              value={newListName}
-              onChangeText={setNewListName}
-              autoFocus
-              onSubmitEditing={handleCreate}
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancel} onPress={() => setModalVisible(false)}>
-                <Text style={styles.modalCancelText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalConfirm} onPress={handleCreate}>
-                <Text style={styles.modalConfirmText}>Criar</Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </SafeAreaView>
   )
 }
@@ -162,82 +146,90 @@ export default function ListasScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.bg },
 
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg, paddingBottom: Spacing.md,
+  header: { 
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
+    paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.md 
   },
-  greeting: { fontSize: Typography.xl, fontWeight: Typography.extrabold, color: Colors.text },
-  subtitle: { fontSize: Typography.sm, color: Colors.textSecondary, marginTop: 2 },
-  notifBtn: {
-    width: 40, height: 40, borderRadius: Radius.md,
-    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
+  headerBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: Colors.surface,
     alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  notifDot: {
+    position: 'absolute', top: 8, right: 10,
+    width: 6, height: 6, borderRadius: 3,
+    backgroundColor: Colors.primaryLight,
+  },
+  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  logoBox: {
+    width: 28, height: 28, borderRadius: 8,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center'
+  },
+  logoL: { fontSize: 16, fontWeight: '900', color: '#1a0d00' },
+  appName: { fontSize: 20, fontWeight: '800', color: Colors.text, letterSpacing: -0.5 },
+  
+  avatarWrap: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: Colors.primaryDim,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: Colors.primaryBorder,
+  },
+  avatarText: { fontSize: 16, fontWeight: '700', color: Colors.primaryLight },
+
+  searchWrap: { paddingHorizontal: Spacing.xl, marginVertical: Spacing.sm },
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderWidth: 1, borderColor: Colors.border,
+    borderRadius: Radius.full,
+    height: 52,
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
+    paddingHorizontal: Spacing.md,
+    fontSize: Typography.base,
+    color: Colors.text,
+  },
+  searchPlusBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'rgba(196,122,42,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+    marginRight: 4,
   },
 
-  statsRow: {
-    flexDirection: 'row', gap: Spacing.sm,
-    paddingHorizontal: Spacing.xl, paddingBottom: Spacing.lg,
-  },
+  statsRow: { flexDirection: 'row', paddingHorizontal: Spacing.xl, gap: Spacing.sm, marginBottom: Spacing.lg },
   statChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
-    paddingHorizontal: Spacing.sm, paddingVertical: 5, borderRadius: Radius.full,
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderRadius: Radius.full,
   },
-  statText: { fontSize: Typography.xs, fontWeight: Typography.semibold, color: Colors.textSecondary },
+  statText: { fontSize: Typography.xs, fontWeight: Typography.medium, color: Colors.textSecondary },
 
-  list: { paddingHorizontal: Spacing.xl, paddingBottom: 100, gap: Spacing.sm },
-
+  list: { paddingHorizontal: Spacing.xl, paddingBottom: 140, paddingTop: Spacing.xs, gap: Spacing.md },
+  
   card: {
-    backgroundColor: Colors.surface, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.border, padding: Spacing.lg, gap: Spacing.sm,
+    backgroundColor: Colors.surface,
+    borderRadius: 24, // Bento Box Radius
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3, shadowRadius: 10, elevation: 8,
   },
-  cardTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  cardIcon: {
-    width: 40, height: 40, borderRadius: Radius.md,
-    backgroundColor: Colors.primaryDim, borderWidth: 1, borderColor: Colors.primaryBorder,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  cardInfo: { flex: 1 },
-  cardTitle: { fontSize: Typography.base, fontWeight: Typography.semibold, color: Colors.text },
-  cardMeta: { fontSize: Typography.xs, color: Colors.textMuted, marginTop: 2 },
-  progressBar: {
-    height: 3, backgroundColor: Colors.border, borderRadius: Radius.full, overflow: 'hidden',
-  },
-  progressFill: { height: '100%', backgroundColor: Colors.primaryLight, borderRadius: Radius.full },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardTitle: { fontSize: Typography.lg, fontWeight: Typography.extrabold, color: Colors.text },
+  cardDate: { fontSize: Typography.xs, color: Colors.textMuted, marginTop: 4, marginBottom: Spacing.md },
+  deleteBtn: { padding: 4 },
 
-  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },
+  progressWrap: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  progressBar: { flex: 1, height: 6, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: Radius.full, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: Colors.primaryLight, borderRadius: Radius.full },
+  progressText: { fontSize: Typography.xs, fontWeight: Typography.bold, color: Colors.textSecondary, width: 60, textAlign: 'right' },
+
+  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 100, gap: Spacing.md },
   emptyTitle: { fontSize: Typography.lg, fontWeight: Typography.bold, color: Colors.text },
   emptyText: { fontSize: Typography.sm, color: Colors.textMuted },
-
-  fab: {
-    position: 'absolute', right: Spacing.xl, bottom: Spacing.xxl,
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: Colors.primaryLight,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: Colors.primaryLight, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
-  },
-
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', paddingHorizontal: Spacing.xxl },
-  modal: {
-    backgroundColor: Colors.surface, borderRadius: Radius.xl,
-    borderWidth: 1, borderColor: Colors.border, padding: Spacing.xxl, gap: Spacing.lg,
-  },
-  modalTitle: { fontSize: Typography.lg, fontWeight: Typography.bold, color: Colors.text },
-  modalInput: {
-    backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.borderMed,
-    borderRadius: Radius.md, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
-    fontSize: Typography.base, color: Colors.text,
-  },
-  modalActions: { flexDirection: 'row', gap: Spacing.sm, justifyContent: 'flex-end' },
-  modalCancel: {
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm,
-    borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border,
-  },
-  modalCancelText: { fontSize: Typography.sm, color: Colors.textSecondary, fontWeight: Typography.semibold },
-  modalConfirm: {
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm,
-    borderRadius: Radius.md, backgroundColor: Colors.primaryLight,
-  },
-  modalConfirmText: { fontSize: Typography.sm, color: '#1a0d00', fontWeight: Typography.bold },
 })

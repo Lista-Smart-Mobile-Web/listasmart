@@ -1,6 +1,7 @@
-import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native'
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
+import { router } from 'expo-router'
 import { useAuthStore } from '@store/useAuthStore'
 import { useRanking } from '@hooks/useContributions'
 import { Badge } from '@components/ui'
@@ -25,23 +26,37 @@ export default function RankingScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Header */}
+      {/* Global Style Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Ranking</Text>
-        <Text style={styles.subtitle}>Colaboradores da semana</Text>
+        <TouchableOpacity style={styles.headerBtn}>
+          <Ionicons name="notifications-outline" size={24} color={Colors.textSecondary} />
+          {/* Notification dot */}
+          <View style={styles.notifDot} />
+        </TouchableOpacity>
+        
+        <View style={styles.headerCenter}>
+          <View style={styles.logoBox}>
+            <Text style={styles.logoL}>L</Text>
+          </View>
+          <Text style={styles.appName}>Ranking</Text>
+        </View>
+
+        <TouchableOpacity style={styles.avatarWrap} onPress={() => router.push('/(tabs)/perfil')}>
+          <Text style={styles.avatarText}>{currentUser?.name?.[0]?.toUpperCase() ?? '?'}</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Posição do usuário atual */}
+      {/* Posição do usuário atual (Bento Box highlight) */}
       {myEntry && (
         <View style={styles.myCard}>
           <View style={styles.myLeft}>
             {MEDAL_COLOR[myEntry.position] ? (
-              <Ionicons name="medal" size={24} color={MEDAL_COLOR[myEntry.position]} />
+              <Ionicons name="medal" size={32} color={MEDAL_COLOR[myEntry.position]} />
             ) : (
               <Text style={styles.myRank}>#{myEntry.position}</Text>
             )}
-            <View>
-              <Text style={styles.myName} numberOfLines={1} adjustsFontSizeToFit>Você</Text>
+            <View style={{ marginLeft: 8 }}>
+              <Text style={styles.myName} numberOfLines={1} adjustsFontSizeToFit>Sua Posição</Text>
               <Badge label={myEntry.level} color={LEVEL_BADGE[myEntry.level] ?? 'muted'} />
             </View>
           </View>
@@ -60,7 +75,6 @@ export default function RankingScreen() {
         <View style={styles.empty}>
           <Ionicons name="trophy-outline" size={52} color={Colors.textMuted} />
           <Text style={styles.emptyTitle}>Ranking vazio</Text>
-          {/* TODO: ranking carregado de GET /ranking quando backend disponível */}
           <Text style={styles.emptyText}>Seja o primeiro a contribuir com preços esta semana!</Text>
         </View>
       ) : (
@@ -69,31 +83,33 @@ export default function RankingScreen() {
           keyExtractor={(item) => item.userId}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }: { item: RankingEntry }) => {
+          renderItem={({ item, index }: { item: RankingEntry, index: number }) => {
             const isMe = item.userId === currentUser?.id
             return (
-              <View style={[styles.row, isMe && styles.rowMe]}>
-                <View style={styles.posWrap}>
-                  {MEDAL_COLOR[item.position] ? (
-                    <View style={styles.medalWrap}>
-                      <Ionicons name="medal" size={22} color={MEDAL_COLOR[item.position]} />
-                    </View>
-                  ) : (
-                    <Text style={styles.rankNum}>#{item.position}</Text>
-                  )}
-                </View>
-                <View style={styles.rowInfo}>
-                  <Text style={[styles.rowName, isMe && styles.rowNameMe]}>
-                    {item.name}{isMe ? ' (você)' : ''}
+              <View>
+                <View style={[styles.row, isMe && styles.rowMe]}>
+                  <View style={styles.posWrap}>
+                    {MEDAL_COLOR[item.position] ? (
+                      <View style={styles.medalWrap}>
+                        <Ionicons name="medal" size={22} color={MEDAL_COLOR[item.position]} />
+                      </View>
+                    ) : (
+                      <Text style={styles.rankNum}>#{item.position}</Text>
+                    )}
+                  </View>
+                  <View style={styles.rowInfo}>
+                    <Text style={[styles.rowName, isMe && styles.rowNameMe]}>
+                      {item.name}{isMe ? ' (você)' : ''}
+                    </Text>
+                    <Badge
+                      label={item.level}
+                      color={LEVEL_BADGE[item.level] ?? 'muted'}
+                    />
+                  </View>
+                  <Text style={[styles.rowPoints, isMe && styles.rowPointsMe]}>
+                    {item.points} pts
                   </Text>
-                  <Badge
-                    label={item.level}
-                    color={LEVEL_BADGE[item.level] ?? 'muted'}
-                  />
                 </View>
-                <Text style={[styles.rowPoints, isMe && styles.rowPointsMe]}>
-                  {item.points} pts
-                </Text>
               </View>
             )
           }}
@@ -106,22 +122,51 @@ export default function RankingScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.bg },
 
-  header: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg, paddingBottom: Spacing.lg },
-  title: { fontSize: Typography.xl, fontWeight: Typography.extrabold, color: Colors.text },
-  subtitle: { fontSize: Typography.sm, color: Colors.textSecondary, marginTop: 2 },
+  header: { 
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
+    paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.md 
+  },
+  headerBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: Colors.surface,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  notifDot: {
+    position: 'absolute', top: 8, right: 10,
+    width: 6, height: 6, borderRadius: 3,
+    backgroundColor: Colors.primaryLight,
+  },
+  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  logoBox: {
+    width: 28, height: 28, borderRadius: 8,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center'
+  },
+  logoL: { fontSize: 16, fontWeight: '900', color: '#1a0d00' },
+  appName: { fontSize: 20, fontWeight: '800', color: Colors.text, letterSpacing: -0.5 },
+  
+  avatarWrap: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: Colors.primaryDim,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: Colors.primaryBorder,
+  },
+  avatarText: { fontSize: 16, fontWeight: '700', color: Colors.primaryLight },
 
   myCard: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginHorizontal: Spacing.xl, marginBottom: Spacing.lg,
-    backgroundColor: Colors.primaryDim, borderWidth: 1, borderColor: Colors.primaryBorder,
-    borderRadius: Radius.lg, padding: Spacing.lg,
+    marginHorizontal: Spacing.xl, marginBottom: Spacing.lg, marginTop: Spacing.md,
+    backgroundColor: 'rgba(196,122,42,0.1)', borderWidth: 1, borderColor: Colors.primaryBorder,
+    borderRadius: 24, padding: Spacing.xl,
+    shadowColor: Colors.primaryLight, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 4,
   },
-  myLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  myRank: { fontSize: Typography.xxl, fontWeight: Typography.extrabold, color: Colors.primaryLight },
-  myName: { fontSize: Typography.base, fontWeight: Typography.bold, color: Colors.text },
+  myLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  myRank: { fontSize: 28, fontWeight: Typography.extrabold, color: Colors.primaryLight },
+  myName: { fontSize: Typography.base, fontWeight: Typography.bold, color: Colors.text, marginBottom: 2 },
   myLevel: { fontSize: Typography.xs, color: Colors.textSecondary, textTransform: 'capitalize' },
   myRight: { alignItems: 'flex-end' },
-  myPoints: { fontSize: Typography.xxl, fontWeight: Typography.extrabold, color: Colors.primaryLight },
+  myPoints: { fontSize: 28, fontWeight: Typography.extrabold, color: Colors.primaryLight },
   myPtsLabel: { fontSize: Typography.xs, color: Colors.textSecondary },
 
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -133,21 +178,22 @@ const styles = StyleSheet.create({
   rankNum: { width: 32, fontSize: 16, fontWeight: '700', color: Colors.textSecondary, textAlign: 'center' },
   medalWrap: { width: 32, alignItems: 'center', justifyContent: 'center' },
 
-  list: { paddingHorizontal: Spacing.xl, paddingBottom: 100 },
+  list: { paddingHorizontal: Spacing.xl, paddingBottom: 140 },
 
   row: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
+    paddingVertical: Spacing.lg,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.03)',
   },
-  rowMe: { backgroundColor: Colors.primaryDim, marginHorizontal: -Spacing.xl, paddingHorizontal: Spacing.xl, borderBottomColor: Colors.primaryBorder },
+  rowMe: { 
+    backgroundColor: 'rgba(255,255,255,0.02)', 
+    marginHorizontal: -Spacing.xl, paddingHorizontal: Spacing.xl, 
+    borderBottomColor: 'rgba(196,122,42,0.1)',
+  },
   posWrap: { width: 36, alignItems: 'center' },
-  medal: { fontSize: 22 },
-  pos: { fontSize: Typography.base, fontWeight: Typography.bold, color: Colors.textSecondary },
-  posMe: { color: Colors.primaryLight },
-  rowInfo: { flex: 1, gap: 3 },
+  rowInfo: { flex: 1, gap: 4, alignItems: 'flex-start' },
   rowName: { fontSize: Typography.base, fontWeight: Typography.medium, color: Colors.text },
-  rowNameMe: { fontWeight: Typography.bold },
+  rowNameMe: { fontWeight: Typography.bold, color: Colors.primaryLight },
   rowPoints: { fontSize: Typography.base, fontWeight: Typography.bold, color: Colors.textSecondary },
   rowPointsMe: { color: Colors.primaryLight },
 })

@@ -1,7 +1,8 @@
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native'
+import { View, TouchableOpacity, StyleSheet, Dimensions, Animated } from 'react-native'
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useRef, useEffect } from 'react'
 import { Colors } from '@constants/index'
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name']
@@ -10,8 +11,8 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
   const insets = useSafeAreaInsets()
 
   return (
-    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-      <View style={styles.row}>
+    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+      <View style={styles.container}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key]
 
@@ -34,27 +35,6 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
             }
           }
 
-          if (isScanner) {
-            return (
-              <View key={route.key} style={styles.fabWrap}>
-                <TouchableOpacity onPress={onPress} activeOpacity={0.82} style={styles.fabTouch}>
-                  <View style={[styles.fab, focused && styles.fabActive]}>
-                    <View style={styles.fabRing}>
-                      <Ionicons
-                        name={(focused ? 'qr-code' : 'qr-code-outline') as IoniconName}
-                        size={28}
-                        color="#fff"
-                      />
-                    </View>
-                  </View>
-                </TouchableOpacity>
-                <Text style={[styles.fabLabel, { color: focused ? Colors.primary : Colors.textSecondary }]}>
-                  Scanner
-                </Text>
-              </View>
-            )
-          }
-
           const Icon = options.tabBarIcon
 
           return (
@@ -62,18 +42,31 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
               key={route.key}
               style={styles.tab}
               onPress={onPress}
-              activeOpacity={0.65}
+              activeOpacity={0.7}
             >
-              {Icon && (
-                <Icon
-                  focused={focused}
-                  color={focused ? Colors.primary : Colors.textSecondary}
-                  size={22}
-                />
-              )}
-              <Text style={[styles.label, { color: focused ? Colors.primary : Colors.textSecondary }]}>
-                {options.title ?? route.name}
-              </Text>
+              <View
+                style={[
+                  styles.iconWrapper,
+                  isScanner && styles.scannerWrapper,
+                  focused && { backgroundColor: isScanner ? Colors.primaryLight : 'rgba(255,255,255,0.1)' }
+                ]}
+              >
+                {isScanner ? (
+                  <Ionicons
+                    name={(focused ? 'qr-code' : 'qr-code-outline') as IoniconName}
+                    size={24}
+                    color={focused ? '#1a0d00' : Colors.primaryLight}
+                  />
+                ) : (
+                  Icon && (
+                    <Icon
+                      focused={focused}
+                      color={focused ? Colors.text : Colors.textSecondary}
+                      size={24}
+                    />
+                  )
+                )}
+              </View>
             </TouchableOpacity>
           )
         })}
@@ -82,73 +75,50 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
   )
 }
 
+const { width } = Dimensions.get('window')
+
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#0d0b08',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(196,122,42,0.2)',
-    overflow: 'visible',
+  wrapper: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    pointerEvents: 'box-none', // Permite clique através de partes transparentes
   },
-  row: {
+  container: {
     flexDirection: 'row',
-    height: 62,
-    overflow: 'visible',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1E1308', // Escuro quente
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 40,
+    height: 72,
+    width: width * 0.85,
+    paddingHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 20,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
+    height: '100%',
   },
-  label: {
-    fontSize: 10,
-    fontWeight: '500',
-    letterSpacing: 0.2,
-  },
-
-  // FAB (Scanner central)
-  fabWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 6,
-    overflow: 'visible',
-  },
-  fabTouch: {
-    alignItems: 'center',
-    marginTop: -26,    // pop acima da tab bar
-    marginBottom: 4,
-  },
-  fab: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: Colors.primary,
+  iconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 14,
-    elevation: 12,
-    borderWidth: 3,
-    borderColor: '#0d0b08',
   },
-  fabActive: {
-    backgroundColor: Colors.primaryLight,
-    shadowOpacity: 0.7,
-  },
-  fabRing: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  fabLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.2,
+  scannerWrapper: {
+    backgroundColor: Colors.primaryDim,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
   },
 })
