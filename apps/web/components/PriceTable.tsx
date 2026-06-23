@@ -67,10 +67,10 @@ export default function PriceTable() {
             <tfoot>
               <tr>
                 <td>Total da lista (7 itens)</td>
-                <td className="best-col" style={{ color: 'var(--green-lt)' }}>R$ 71,59</td>
+                <td className="best-col tfoot-best">R$ 71,59</td>
                 <td>R$ 89,30</td>
                 <td>R$ 104,19</td>
-                <td style={{ color: 'var(--text-muted)' }}>R$ 92,00</td>
+                <td className="tfoot-muted">R$ 92,00</td>
               </tr>
             </tfoot>
           </table>

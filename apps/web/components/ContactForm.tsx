@@ -121,7 +121,7 @@ export default function ContactForm() {
         <div className="cf-grid">
           <div className="cf-field">
             <label className="cf-label" htmlFor="f-storeName">
-              Nome do estabelecimento <span style={{ color: "#ef4444" }}>*</span>
+              Nome do estabelecimento <span style={{ color: 'var(--red-lt)' }}>*</span>
             </label>
             <input
               id="f-storeName"
@@ -136,7 +136,7 @@ export default function ContactForm() {
 
           <div className="cf-field">
             <label className="cf-label" htmlFor="f-city">
-              Cidade / Estado <span style={{ color: "#ef4444" }}>*</span>
+              Cidade / Estado <span style={{ color: 'var(--red-lt)' }}>*</span>
             </label>
             <input
               id="f-city"
@@ -151,7 +151,7 @@ export default function ContactForm() {
 
           <div className="cf-field">
             <label className="cf-label" htmlFor="f-contactName">
-              Nome do responsável <span style={{ color: "#ef4444" }}>*</span>
+              Nome do responsável <span style={{ color: 'var(--red-lt)' }}>*</span>
             </label>
             <input
               id="f-contactName"
@@ -166,7 +166,7 @@ export default function ContactForm() {
 
           <div className="cf-field">
             <label className="cf-label" htmlFor="f-phone">
-              Telefone / WhatsApp <span style={{ color: "#ef4444" }}>*</span>
+              Telefone / WhatsApp <span style={{ color: 'var(--red-lt)' }}>*</span>
             </label>
             <input
               id="f-phone"
@@ -181,7 +181,7 @@ export default function ContactForm() {
 
           <div className="cf-field full">
             <label className="cf-label" htmlFor="f-email">
-              E-mail corporativo <span style={{ color: "#ef4444" }}>*</span>
+              E-mail corporativo <span style={{ color: 'var(--red-lt)' }}>*</span>
             </label>
             <input
               id="f-email"
@@ -196,7 +196,7 @@ export default function ContactForm() {
 
           <div className="cf-field full">
             <label className="cf-label" htmlFor="f-storeCount">
-              Número de lojas <span style={{ color: "#ef4444" }}>*</span>
+              Número de lojas <span style={{ color: 'var(--red-lt)' }}>*</span>
             </label>
             <select
               id="f-storeCount"
@@ -227,13 +227,13 @@ export default function ContactForm() {
           </div>
         </div>
 
-        {status === "error" && errorMsg && (
+        {status === 'error' && errorMsg && (
           <p
             style={{
-              color: "#ef4444",
-              fontSize: "0.875rem",
-              marginBottom: "1rem",
-              textAlign: "center",
+              color: 'var(--red-lt)',
+              fontSize: '0.875rem',
+              marginBottom: '1rem',
+              textAlign: 'center',
             }}
           >
             {errorMsg}

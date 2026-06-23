@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 
+const APP_URL = 'https://www.listasmart.com.br'
+
 const LINKS = [
   { href: '#features', label: 'Para você' },
   { href: '#partners', label: 'Para supermercados' },
@@ -56,6 +58,7 @@ export default function Nav() {
           Lista Smart
         </a>
 
+        {/* Desktop nav links — hidden on mobile */}
         <ul className="nav-links">
           {LINKS.map((l) => (
             <li key={l.href}>
@@ -66,13 +69,22 @@ export default function Nav() {
           ))}
         </ul>
 
+        {/* Desktop right actions — hidden on mobile via .nav-desktop-btn */}
         <div className="nav-right">
-          <a href="#partners" className="btn btn-ghost">Quero ser parceiro</a>
-          <a href="#cta" className="btn btn-amber">Começar agora</a>
+          <a href="#partners" className="btn btn-ghost nav-desktop-btn">Quero ser parceiro</a>
+          <a
+            href={APP_URL}
+            className="btn btn-amber nav-desktop-btn"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Começar agora
+          </a>
           <button
             className={`nav-hamburger${open ? ' open' : ''}`}
             onClick={() => setOpen(!open)}
             aria-label={open ? 'Fechar menu' : 'Abrir menu'}
+            aria-expanded={open}
           >
             <span />
             <span />
@@ -81,19 +93,31 @@ export default function Nav() {
         </div>
       </nav>
 
-      {/* Mobile menu */}
+      {/* Mobile menu overlay */}
       <div className={`mobile-menu${open ? ' open' : ''}`} aria-hidden={!open}>
+        {/* Nav links */}
         <nav className="mobile-nav">
           {LINKS.map((l) => (
-            <a key={l.href} href={l.href} onClick={close}>{l.label}</a>
+            <a key={l.href} href={l.href} className="mob-link" onClick={close}>
+              {l.label}
+              <span className="mob-arrow">→</span>
+            </a>
           ))}
         </nav>
-        <div className="mobile-nav-footer">
-          <a href="#partners" className="btn btn-ghost" style={{ justifyContent: 'center' }} onClick={close}>
-            Quero ser parceiro
+
+        {/* CTAs pinned to bottom */}
+        <div className="mob-footer">
+          <a
+            href={APP_URL}
+            className="mob-cta-primary"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={close}
+          >
+            Comparar preços agora
           </a>
-          <a href="#cta" className="btn btn-amber" style={{ justifyContent: 'center' }} onClick={close}>
-            Começar agora
+          <a href="#partners" className="mob-cta-secondary" onClick={close}>
+            Quero ser parceiro
           </a>
         </div>
       </div>

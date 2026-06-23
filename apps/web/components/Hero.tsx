@@ -14,7 +14,7 @@ export default function Hero() {
           A Lista Smart compara os preços da sua lista em supermercados da sua cidade e indica onde comprar pelo menor preço. Economize até R$ 400 por mês.
         </p>
         <div className="hero-actions">
-          <a href="#cta" className="btn btn-amber btn-lg">Comparar preços agora</a>
+          <a href="https://www.listasmart.com.br" target="_blank" rel="noopener noreferrer" className="btn btn-amber btn-lg">Comparar preços agora</a>
           <a href="#how" className="btn btn-ghost btn-lg">Ver como funciona</a>
         </div>
         <div className="hero-proof">

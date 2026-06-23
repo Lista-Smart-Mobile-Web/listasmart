@@ -1,5 +1,3 @@
-export const dynamic = 'force-static'
-
 import Nav from '@/components/Nav'
 import Hero from '@/components/Hero'
 import PriceTicker from '@/components/PriceTicker'
@@ -12,6 +10,8 @@ import Partners from '@/components/Partners'
 import Testimonials from '@/components/Testimonials'
 import Cta from '@/components/Cta'
 import Footer from '@/components/Footer'
+
+export const dynamic = 'force-static'
 
 export default function HomePage() {
   return (
