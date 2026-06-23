@@ -191,8 +191,10 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: Typography.base, fontWeight: Typography.bold, color: Colors.text },
 
   badgesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  badgeCard: { alignItems: 'center', gap: Spacing.xs,    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)', minWidth: 80, flex: 0 },
+  badgeCard: { 
+    alignItems: 'center', gap: Spacing.xs, borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)', width: 104 
+  },
   badgeContent: { fontSize: 10, color: Colors.textSecondary, textAlign: 'center', textTransform: 'capitalize' },
 
   menuItem: {
