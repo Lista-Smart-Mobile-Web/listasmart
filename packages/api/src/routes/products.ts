@@ -5,10 +5,14 @@ import { wrap } from '../middleware/asyncWrap'
 const router = Router()
 
 router.get('/', wrap(async (req, res) => {
-  const { q, category } = req.query
+  const { q, category, barcode } = req.query
   const conditions: string[] = []
   const params: unknown[] = []
 
+  if (barcode) {
+    params.push(barcode)
+    conditions.push(`barcode = $${params.length}`)
+  }
   if (q) {
     params.push(`%${q}%`)
     conditions.push(`name ILIKE $${params.length}`)

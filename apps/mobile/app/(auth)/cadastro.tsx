@@ -16,7 +16,7 @@ import { Colors, Typography, Spacing, Radius } from '@constants/index'
 const schema = z.object({
   name: z.string().min(2, 'Nome muito curto'),
   email: z.string().email('E-mail inválido'),
-  password: z.string().min(6, 'Mínimo 6 caracteres'),
+  password: z.string().min(8, 'Mínimo 8 caracteres'),
   role: z.enum(['consumer', 'partner']),
 })
 type FormData = z.infer<typeof schema>
