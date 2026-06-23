@@ -4,6 +4,7 @@
     "slug": "listasmart",
     "version": "1.0.0",
     "orientation": "portrait",
+    "platforms": ["ios", "android"],
     "scheme": "listasmart",
     "userInterfaceStyle": "light",
     "splash": {

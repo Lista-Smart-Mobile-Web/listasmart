@@ -1,6 +1,7 @@
-import { Tabs } from 'expo-router'
+import { Redirect, Tabs } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import CustomTabBar from '@components/CustomTabBar'
+import { useAuthStore } from '@store/useAuthStore'
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name']
 
@@ -11,6 +12,9 @@ function icon(outline: IoniconName, filled: IoniconName) {
 }
 
 export default function TabsLayout() {
+  const { token } = useAuthStore()
+
+  if (!token) return <Redirect href="/(auth)/login" />
   return (
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}

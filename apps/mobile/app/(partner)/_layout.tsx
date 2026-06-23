@@ -1,5 +1,6 @@
-import { Tabs } from 'expo-router'
+import { Redirect, Tabs } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+import { useAuthStore } from '@store/useAuthStore'
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name']
 
@@ -12,6 +13,9 @@ const TABS: { name: string; label: string; icon: IoniconName; iconFocused: Ionic
 ]
 
 export default function PartnerLayout() {
+  const { token } = useAuthStore()
+
+  if (!token) return <Redirect href="/(auth)/login" />
   return (
     <Tabs screenOptions={{ tabBarActiveTintColor: '#0ea5e9', headerShown: false }}>
       {TABS.map((tab) => (

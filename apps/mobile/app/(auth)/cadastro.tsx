@@ -112,7 +112,9 @@ export default function CadastroScreen() {
                   style={[styles.roleBtn, selectedRole === 'consumer' && styles.roleBtnActive]}
                   onPress={() => setValue('role', 'consumer')}
                 >
-                  <Text style={styles.roleEmoji}>🛒</Text>
+                  <View style={{ marginBottom: 8 }}>
+                    <Ionicons name="cart-outline" size={32} color={selectedRole === 'consumer' ? Colors.primary : Colors.textSecondary} />
+                  </View>
                   <Text style={[styles.roleBtnText, selectedRole === 'consumer' && styles.roleBtnTextActive]}>
                     Consumidor
                   </Text>
@@ -123,7 +125,9 @@ export default function CadastroScreen() {
                   style={[styles.roleBtn, selectedRole === 'partner' && styles.roleBtnActive]}
                   onPress={() => setValue('role', 'partner')}
                 >
-                  <Text style={styles.roleEmoji}>🏪</Text>
+                  <View style={{ marginBottom: 8 }}>
+                    <Ionicons name="storefront-outline" size={32} color={selectedRole === 'partner' ? Colors.primary : Colors.textSecondary} />
+                  </View>
                   <Text style={[styles.roleBtnText, selectedRole === 'partner' && styles.roleBtnTextActive]}>
                     Supermercado
                   </Text>

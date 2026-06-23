@@ -45,7 +45,12 @@ export default function ListasScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Olá, {user?.name?.split(' ')[0]} 👋</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.greeting} numberOfLines={1} adjustsFontSizeToFit>
+              Olá, {user?.name?.split(' ')[0]}
+            </Text>
+            <Ionicons name="hand-left-outline" size={20} color={Colors.amber} />
+          </View>
           <Text style={styles.subtitle}>Suas listas de compras</Text>
         </View>
         <TouchableOpacity style={styles.notifBtn} onPress={() => {}}>

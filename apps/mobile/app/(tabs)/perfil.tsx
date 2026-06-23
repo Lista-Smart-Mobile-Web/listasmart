@@ -29,12 +29,14 @@ function getNextLevel(level: string): string | null {
   return LEVEL_THRESHOLDS[idx + 1]?.level ?? null
 }
 
-const BADGE_ICONS: Record<string, string> = {
-  primeira_lista: '📋',
-  colaborador_iniciante: '🤝',
-  verificador: '✅',
-  sequencia_7dias: '🔥',
-  embaixador: '🏆',
+type IoniconName = React.ComponentProps<typeof Ionicons>['name']
+
+const BADGE_ICONS: Record<string, IoniconName> = {
+  primeira_lista: 'clipboard-outline',
+  colaborador_iniciante: 'handshake-outline',
+  verificador: 'checkmark-circle-outline',
+  sequencia_7dias: 'flame-outline',
+  embaixador: 'trophy-outline',
 }
 
 export default function PerfilScreen() {
@@ -71,8 +73,12 @@ export default function PerfilScreen() {
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{user?.name?.[0]?.toUpperCase() ?? '?'}</Text>
           </View>
-          <Text style={styles.name}>{user?.name}</Text>
-          <Text style={styles.email}>{user?.email}</Text>
+          <Text style={styles.name} numberOfLines={1} adjustsFontSizeToFit>
+            {user?.name}
+          </Text>
+          <Text style={styles.email} numberOfLines={1} adjustsFontSizeToFit>
+            {user?.email}
+          </Text>
           <Badge label={level} color="amber" />
         </View>
 
@@ -92,7 +98,7 @@ export default function PerfilScreen() {
             )}
             {!nextLevel && (
               <View style={styles.ptsNext}>
-                <Text style={styles.ptsNextValue}>🏆</Text>
+                <Ionicons name="trophy-outline" size={16} color={Colors.amber} />
                 <Text style={styles.ptsNextLevel}>Nível máximo!</Text>
               </View>
             )}
@@ -114,8 +120,8 @@ export default function PerfilScreen() {
             <View style={styles.badgesGrid}>
               {badges.map((b) => (
                 <Card key={b.badge_type} variant="default" style={styles.badgeCard}>
-                  <Text style={styles.badgeIcon}>{BADGE_ICONS[b.badge_type] ?? '🏅'}</Text>
-                  <Text style={styles.badgeType}>{b.badge_type.replace(/_/g, ' ')}</Text>
+                  <Ionicons name={BADGE_ICONS[b.badge_type] ?? 'medal-outline'} size={24} color={Colors.amber} />
+                  <Text style={styles.badgeContent} numberOfLines={2} adjustsFontSizeToFit>{b.badge_type.replace(/_/g, ' ')}</Text>
                 </Card>
               ))}
             </View>
@@ -185,9 +191,9 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: Typography.base, fontWeight: Typography.bold, color: Colors.text },
 
   badgesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  badgeCard: { alignItems: 'center', gap: Spacing.xs, minWidth: 80, flex: 0 },
-  badgeIcon: { fontSize: 28 },
-  badgeType: { fontSize: 10, color: Colors.textSecondary, textAlign: 'center', textTransform: 'capitalize' },
+  badgeCard: { alignItems: 'center', gap: Spacing.xs,    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)', minWidth: 80, flex: 0 },
+  badgeContent: { fontSize: 10, color: Colors.textSecondary, textAlign: 'center', textTransform: 'capitalize' },
 
   menuItem: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.md,

@@ -7,7 +7,7 @@ import { Badge } from '@components/ui'
 import { Colors, Typography, Spacing, Radius } from '@constants/index'
 import type { RankingEntry } from '@/types'
 
-const MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
+const MEDAL_COLOR: Record<number, string> = { 1: '#FACC15', 2: '#94A3B8', 3: '#D97706' }
 
 const LEVEL_BADGE: Record<string, Parameters<typeof Badge>[0]['color']> = {
   iniciante: 'muted',
@@ -35,10 +35,14 @@ export default function RankingScreen() {
       {myEntry && (
         <View style={styles.myCard}>
           <View style={styles.myLeft}>
-            <Text style={styles.myRank}>#{myEntry.position}</Text>
+            {MEDAL_COLOR[myEntry.position] ? (
+              <Ionicons name="medal" size={24} color={MEDAL_COLOR[myEntry.position]} />
+            ) : (
+              <Text style={styles.myRank}>#{myEntry.position}</Text>
+            )}
             <View>
-              <Text style={styles.myName}>Você</Text>
-              <Text style={styles.myLevel}>{myEntry.level}</Text>
+              <Text style={styles.myName} numberOfLines={1} adjustsFontSizeToFit>Você</Text>
+              <Badge label={myEntry.level} color={LEVEL_BADGE[myEntry.level] ?? 'muted'} />
             </View>
           </View>
           <View style={styles.myRight}>
@@ -70,10 +74,12 @@ export default function RankingScreen() {
             return (
               <View style={[styles.row, isMe && styles.rowMe]}>
                 <View style={styles.posWrap}>
-                  {MEDAL[item.position] ? (
-                    <Text style={styles.medal}>{MEDAL[item.position]}</Text>
+                  {MEDAL_COLOR[item.position] ? (
+                    <View style={styles.medalWrap}>
+                      <Ionicons name="medal" size={22} color={MEDAL_COLOR[item.position]} />
+                    </View>
                   ) : (
-                    <Text style={[styles.pos, isMe && styles.posMe]}>#{item.position}</Text>
+                    <Text style={styles.rankNum}>#{item.position}</Text>
                   )}
                 </View>
                 <View style={styles.rowInfo}>
@@ -123,6 +129,9 @@ const styles = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.xxl },
   emptyTitle: { fontSize: Typography.lg, fontWeight: Typography.bold, color: Colors.text },
   emptyText: { fontSize: Typography.sm, color: Colors.textMuted, textAlign: 'center' },
+
+  rankNum: { width: 32, fontSize: 16, fontWeight: '700', color: Colors.textSecondary, textAlign: 'center' },
+  medalWrap: { width: 32, alignItems: 'center', justifyContent: 'center' },
 
   list: { paddingHorizontal: Spacing.xl, paddingBottom: 100 },
 

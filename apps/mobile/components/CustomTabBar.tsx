@@ -14,6 +14,12 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
       <View style={styles.row}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key]
+
+          // Ignore hidden routes (like dashboard or routes with href: null)
+          if (route.name === 'dashboard' || options.href === null) {
+            return null
+          }
+
           const focused = state.index === index
           const isScanner = route.name === 'scanner'
 
