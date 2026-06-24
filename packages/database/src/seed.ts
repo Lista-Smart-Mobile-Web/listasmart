@@ -54,8 +54,14 @@ async function seed() {
       ('c1000000-0000-0000-0000-000000000002', 'João Carlos',     'joao@example.com',    '${hash}',      'consumer', 260,  'colaborador'),
       ('c1000000-0000-0000-0000-000000000003', 'Ana Souza',       'ana@example.com',     '${hash}',      'consumer', 190,  'iniciante'),
       ('c1000000-0000-0000-0000-000000000004', 'Carlos Lima',     'carlos@example.com',  '${hash}',      'consumer', 120,  'iniciante'),
-      ('c1000000-0000-0000-0000-000000000005', 'Teste Dev',       'dev@listasmart.com',  '${hash}',      'consumer', 0,    'iniciante')
-    ON CONFLICT (id) DO NOTHING
+      ('c1000000-0000-0000-0000-000000000005', 'Teste Dev',       'dev@listasmart.com',  '${hash}',      'consumer', 1500, 'embaixador'),
+      ('c1000000-0000-0000-0000-000000000006', 'Pedro Costa',     'pedro@example.com',   '${hash}',      'consumer', 850,  'especialista'),
+      ('c1000000-0000-0000-0000-000000000007', 'Juliana Silva',   'juliana@example.com', '${hash}',      'consumer', 600,  'especialista'),
+      ('c1000000-0000-0000-0000-000000000008', 'Lucas Martins',   'lucas@example.com',   '${hash}',      'consumer', 450,  'verificado'),
+      ('c1000000-0000-0000-0000-000000000009', 'Fernanda Lima',   'fernanda@example.com','${hash}',      'consumer', 310,  'verificado'),
+      ('c1000000-0000-0000-0000-000000000011', 'Rafael Rocha',    'rafael@example.com',  '${hash}',      'consumer', 210,  'verificado'),
+      ('c1000000-0000-0000-0000-000000000012', 'Bruna Gomes',     'bruna@example.com',   '${hash}',      'consumer', 80,   'iniciante')
+    ON CONFLICT (id) DO UPDATE SET points = EXCLUDED.points, level = EXCLUDED.level
   `)
 
   // Partner user linked to Atacadão
@@ -148,7 +154,12 @@ async function seed() {
       ('c1000000-0000-0000-0000-000000000002','manual', 'b1000000-0000-0000-0000-000000000002','a1000000-0000-0000-0000-000000000001',  6.49,'approved', 10),
       ('c1000000-0000-0000-0000-000000000002','confirm','b1000000-0000-0000-0000-000000000004','a1000000-0000-0000-0000-000000000004', 15.80,'approved',  5),
       ('c1000000-0000-0000-0000-000000000003','manual', 'b1000000-0000-0000-0000-000000000005','a1000000-0000-0000-0000-000000000003', 15.50,'approved', 10),
-      ('c1000000-0000-0000-0000-000000000004','qr_code','b1000000-0000-0000-0000-000000000011','a1000000-0000-0000-0000-000000000004', 19.80,'approved', 30)
+      ('c1000000-0000-0000-0000-000000000004','qr_code','b1000000-0000-0000-0000-000000000011','a1000000-0000-0000-0000-000000000004', 19.80,'approved', 30),
+      ('c1000000-0000-0000-0000-000000000005','qr_code','b1000000-0000-0000-0000-000000000001','a1000000-0000-0000-0000-000000000001', 23.90,'approved', 30),
+      ('c1000000-0000-0000-0000-000000000005','qr_code','b1000000-0000-0000-0000-000000000002','a1000000-0000-0000-0000-000000000002',  7.99,'approved', 30),
+      ('c1000000-0000-0000-0000-000000000005','manual', 'b1000000-0000-0000-0000-000000000003','a1000000-0000-0000-0000-000000000003',  5.10,'approved', 10),
+      ('c1000000-0000-0000-0000-000000000005','confirm','b1000000-0000-0000-0000-000000000004','a1000000-0000-0000-0000-000000000004', 16.20,'approved', 5),
+      ('c1000000-0000-0000-0000-000000000005','qr_code','b1000000-0000-0000-0000-000000000005','a1000000-0000-0000-0000-000000000001', 14.90,'approved', 30)
     ON CONFLICT DO NOTHING
   `)
   console.log('  ✓ Contribuições inseridas')
@@ -159,7 +170,11 @@ async function seed() {
       ('c1000000-0000-0000-0000-000000000001', 'Preços confiáveis'),
       ('c1000000-0000-0000-0000-000000000001', '7 dias seguidos'),
       ('c1000000-0000-0000-0000-000000000002', 'Preços confiáveis'),
-      ('c1000000-0000-0000-0000-000000000001', 'Top 10 da semana')
+      ('c1000000-0000-0000-0000-000000000001', 'Top 10 da semana'),
+      ('c1000000-0000-0000-0000-000000000005', 'Primeiro QR Code'),
+      ('c1000000-0000-0000-0000-000000000005', 'Preços confiáveis'),
+      ('c1000000-0000-0000-0000-000000000005', 'Top 10 da semana'),
+      ('c1000000-0000-0000-0000-000000000005', '7 dias seguidos')
     ON CONFLICT (user_id, badge_type) DO NOTHING
   `)
   console.log('  ✓ Badges inseridas')
@@ -175,22 +190,29 @@ async function seed() {
   console.log('  ✓ Promoções inseridas')
 
   // ─── Sample list for dev user ────────────────────────────────────────────────
-  const { rows: [devList] } = await pool.query(`
-    INSERT INTO lists (user_id, name)
-    VALUES ('c1000000-0000-0000-0000-000000000005', 'Lista da semana')
+  const { rows: devLists } = await pool.query(`
+    INSERT INTO lists (id, user_id, name, created_at)
+    VALUES 
+      ('d1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000005', 'Compras de Junho', NOW() - INTERVAL '2 days'),
+      ('d1000000-0000-0000-0000-000000000002', 'c1000000-0000-0000-0000-000000000005', 'Festa de Aniversário', NOW() - INTERVAL '5 days'),
+      ('d1000000-0000-0000-0000-000000000003', 'c1000000-0000-0000-0000-000000000005', 'Produtos de Limpeza', NOW() - INTERVAL '10 days')
     ON CONFLICT DO NOTHING
     RETURNING id
   `)
-  if (devList) {
+  if (devLists.length > 0) {
     await pool.query(`
       INSERT INTO list_items (list_id, product_id, quantity) VALUES
-        ('${devList.id}','b1000000-0000-0000-0000-000000000001', 1),
-        ('${devList.id}','b1000000-0000-0000-0000-000000000002', 2),
-        ('${devList.id}','b1000000-0000-0000-0000-000000000003', 4),
-        ('${devList.id}','b1000000-0000-0000-0000-000000000005', 1)
+        ('d1000000-0000-0000-0000-000000000001','b1000000-0000-0000-0000-000000000001', 1),
+        ('d1000000-0000-0000-0000-000000000001','b1000000-0000-0000-0000-000000000002', 2),
+        ('d1000000-0000-0000-0000-000000000001','b1000000-0000-0000-0000-000000000003', 4),
+        ('d1000000-0000-0000-0000-000000000001','b1000000-0000-0000-0000-000000000005', 1),
+        ('d1000000-0000-0000-0000-000000000002','b1000000-0000-0000-0000-000000000004', 3),
+        ('d1000000-0000-0000-0000-000000000002','b1000000-0000-0000-0000-000000000007', 2),
+        ('d1000000-0000-0000-0000-000000000003','b1000000-0000-0000-0000-000000000012', 4),
+        ('d1000000-0000-0000-0000-000000000003','b1000000-0000-0000-0000-000000000013', 2)
       ON CONFLICT DO NOTHING
     `)
-    console.log('  ✓ Lista de exemplo criada para dev@listasmart.com')
+    console.log('  ✓ Listas de exemplo criadas para dev@listasmart.com')
   }
 
   console.log('\n✅ Seed concluído com sucesso!\n')
