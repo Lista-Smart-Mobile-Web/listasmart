@@ -7,7 +7,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useOfflineStore } from '@store/useOfflineStore'
 import { useListStore } from '@store/useListStore'
 import { initDB } from '@services/db'
-import { seedMockDB } from '@services/mock'
 import {
   registerForPushNotifications,
   addNotificationReceivedListener,
@@ -15,7 +14,6 @@ import {
 } from '@services/notifications'
 import { Colors } from '@constants/index'
 
-const USE_MOCKS = process.env.EXPO_PUBLIC_USE_MOCKS === 'true'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,7 +28,6 @@ function AppBootstrap() {
 
   useEffect(() => {
     initDB()
-    if (USE_MOCKS) seedMockDB()
     hydrate()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
