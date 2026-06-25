@@ -1,8 +1,7 @@
-import { View, TouchableOpacity, StyleSheet, Dimensions, Animated } from 'react-native'
+import { View, TouchableOpacity, StyleSheet, Dimensions } from 'react-native'
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useRef, useEffect } from 'react'
 import { Colors } from '@constants/index'
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name']
@@ -16,8 +15,8 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key]
 
-          // Ignore hidden routes (like dashboard or routes with href: null)
-          if (route.name === 'dashboard' || options.href === null) {
+          // Ignore hidden route rendered outside the custom bar
+          if (route.name === 'dashboard') {
             return null
           }
 

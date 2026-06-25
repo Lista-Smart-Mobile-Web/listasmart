@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications'
 import * as Device from 'expo-device'
 import Constants from 'expo-constants'
 import { Platform } from 'react-native'
+import { shouldSendNotification } from './notificationPrefs'
 
 // Comportamento padrão para notificações recebidas com app em foreground
 Notifications.setNotificationHandler({
@@ -60,6 +61,8 @@ export async function scheduleLocalNotification(
 }
 
 export async function notifyPriceAlert(productName: string, marketName: string, price: number): Promise<void> {
+  if (!(await shouldSendNotification('priceDrop'))) return
+
   await scheduleLocalNotification(
     '💰 Queda de preço!',
     `${productName} está por R$ ${price.toFixed(2)} em ${marketName}`
@@ -67,6 +70,8 @@ export async function notifyPriceAlert(productName: string, marketName: string, 
 }
 
 export async function notifyContributionApproved(points: number): Promise<void> {
+  if (!(await shouldSendNotification('contributionApproved'))) return
+
   await scheduleLocalNotification(
     '✅ Contribuição aprovada',
     `+${points} pontos adicionados ao seu perfil!`
@@ -74,6 +79,8 @@ export async function notifyContributionApproved(points: number): Promise<void> 
 }
 
 export async function notifyOfflineSynced(count: number): Promise<void> {
+  if (!(await shouldSendNotification('offlineSync'))) return
+
   await scheduleLocalNotification(
     '🔄 Sincronização concluída',
     `${count} ${count === 1 ? 'operação sincronizada' : 'operações sincronizadas'} com sucesso.`

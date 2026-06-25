@@ -12,6 +12,7 @@ import {
   addNotificationReceivedListener,
   addNotificationResponseListener,
 } from '@services/notifications'
+import { ToastHost } from '@components/ui'
 import { Colors } from '@constants/index'
 
 
@@ -55,6 +56,7 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <StatusBar style="light" />
           <AppBootstrap />
+          <ToastHost />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@services/api'
 import { useOfflineStore } from '@store/useOfflineStore'
+import { useAuthStore } from '@store/useAuthStore'
 import { enqueueOfflineOp } from '@services/db'
 import type { Contribution, RankingEntry, AnalyticsOverview } from '@/types'
 
@@ -15,6 +16,7 @@ interface ContributionPayload {
 export function useSubmitContribution() {
   const queryClient = useQueryClient()
   const isOnline = useOfflineStore((s) => s.isOnline)
+  const updateUser = useAuthStore((s) => s.updateUser)
 
   return useMutation({
     mutationFn: async (payload: ContributionPayload) => {
@@ -30,9 +32,25 @@ export function useSubmitContribution() {
       const { data } = await api.post<Contribution>('/contributions', payload)
       return data
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      if (isOnline) {
+        try {
+          const { data } = await api.get<{ id: string; name: string; email: string; points: number; level: string }>('/users/me')
+          updateUser({
+            id: data.id,
+            name: data.name,
+            email: data.email,
+            points: data.points,
+            level: data.level,
+          })
+        } catch {
+          // Best-effort sync; keep UX responsive even if /users/me fails.
+        }
+      }
+
       queryClient.invalidateQueries({ queryKey: ['contributions'] })
       queryClient.invalidateQueries({ queryKey: ['user', 'me'] })
+      queryClient.invalidateQueries({ queryKey: ['ranking'] })
     },
   })
 }

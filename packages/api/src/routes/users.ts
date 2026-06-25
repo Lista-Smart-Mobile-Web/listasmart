@@ -17,13 +17,24 @@ router.patch('/me', authUser, async (req, res) => {
   const parsed = updateUserSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
 
-  const { name } = parsed.data
-  const { rows: [user] } = await pool.query(
-    `UPDATE users SET name = COALESCE($1, name) WHERE id = $2
-     RETURNING id, name, email, points, level`,
-    [name, req.user!.id]
-  )
-  res.json(user)
+  const { name, email } = parsed.data
+
+  try {
+    const { rows: [user] } = await pool.query(
+      `UPDATE users
+       SET name = COALESCE($1, name),
+           email = COALESCE($2, email)
+       WHERE id = $3
+       RETURNING id, name, email, points, level`,
+      [name, email, req.user!.id]
+    )
+    res.json(user)
+  } catch (err: any) {
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'E-mail já cadastrado' })
+    }
+    throw err
+  }
 })
 
 router.get('/me/badges', authUser, async (req, res) => {

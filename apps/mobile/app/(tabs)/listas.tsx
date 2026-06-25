@@ -14,12 +14,14 @@ import { Colors, Typography, Spacing, Radius } from '@constants/index'
 import type { ShoppingListLocal } from '@/types'
 
 export default function ListasScreen() {
-  const { data: lists = [], isLoading } = useLists()
+  const { lists, isLoading } = useLists()
   const deleteList = useDeleteList()
   const user = useAuthStore((s) => s.user)
   const [searchQuery, setSearchQuery] = useState('')
 
-  const filteredLists = lists.filter(l => l.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredLists = lists.filter((l: ShoppingListLocal) =>
+    l.name.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   function confirmDelete(list: ShoppingListLocal) {
     Alert.alert('Excluir lista', `Excluir "${list.name}"?`, [
@@ -123,7 +125,7 @@ export default function ListasScreen() {
                       <Ionicons name="trash-outline" size={18} color={Colors.error} />
                     </TouchableOpacity>
                   </View>
-                  <Text style={styles.cardDate}>Atualizado em {new Date(item.updatedAt).toLocaleDateString()}</Text>
+                  <Text style={styles.cardDate}>Atualizado em {new Date(item.createdAt).toLocaleDateString()}</Text>
 
                   <View style={styles.progressWrap}>
                     <View style={styles.progressBar}>

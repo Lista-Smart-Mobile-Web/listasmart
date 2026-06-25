@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+﻿import { useState, useEffect, useCallback } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, Modal, Pressable,
-  TextInput, FlatList, ActivityIndicator, ScrollView,
+  TextInput, FlatList, ActivityIndicator, ScrollView, Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { CameraView, useCameraPermissions } from 'expo-camera'
@@ -9,17 +9,70 @@ import { Ionicons } from '@expo/vector-icons'
 import { useSubmitContribution } from '@hooks/useContributions'
 import { useProductByBarcode, useProductSearch } from '@hooks/useProducts'
 import { useMarkets } from '@hooks/useMarkets'
+import api from '@services/api'
 import { Button } from '@components/ui'
 import { Colors, Typography, Spacing, Radius } from '@constants/index'
 import type { Product, Market } from '@/types'
 
-type Screen = 'camera' | 'search' | 'price'
+type Screen = 'camera' | 'search' | 'nfeItems' | 'price'
+type ContributionType = 'qr_code' | 'manual'
+
+interface NfeMatchedItem {
+  code: string | null
+  name: string
+  quantity: number
+  unit: string
+  unitPrice: number
+  totalPrice: number
+  product: Product | null
+  matched: boolean
+}
+
+interface NfeScanResponse {
+  accessKey: string | null
+  issuedAt: string | null
+  total: number | null
+  emitter: {
+    cnpj: string | null
+    name: string | null
+    address: string | null
+    city: string | null
+  }
+  market: {
+    id: string
+    name: string
+    city: string
+  } | null
+  items: NfeMatchedItem[]
+}
+
+function looksLikeFiscalQr(data: string, scannerType?: string) {
+  const value = data.trim()
+  const normalizedType = String(scannerType ?? '').toLowerCase()
+
+  if (/^\d{44}$/.test(value)) return true
+  if (normalizedType.includes('qr') && /nfce|nfe|sefaz|fazenda|chnfe=|[?&]p=/i.test(value)) return true
+  return /^https?:\/\//i.test(value) && /nfce|nfe|sefaz|fazenda|chnfe=|[?&]p=/i.test(value)
+}
+
+function formatPriceInput(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return ''
+  return value.toFixed(2).replace('.', ',')
+}
 
 export default function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions()
   const [scanned, setScanned] = useState(false)
   const [screen, setScreen] = useState<Screen>('camera')
+
   const [barcode, setBarcode] = useState<string | null>(null)
+  const [rawScanData, setRawScanData] = useState<string | null>(null)
+  const [isFiscalLookup, setIsFiscalLookup] = useState(false)
+  const [nfeItems, setNfeItems] = useState<NfeMatchedItem[]>([])
+  const [fiscalMarketName, setFiscalMarketName] = useState<string | null>(null)
+  const [preferredMarketId, setPreferredMarketId] = useState<string | null>(null)
+  const [contributionType, setContributionType] = useState<ContributionType>('manual')
+
   const [searchText, setSearchText] = useState('')
   const [product, setProduct] = useState<Product | null>(null)
   const [market, setMarket] = useState<Market | null>(null)
@@ -31,34 +84,105 @@ export default function ScannerScreen() {
   const searchQuery = useProductSearch(searchText)
   const marketsQuery = useMarkets()
 
-  // When barcode lookup finishes, navigate to the appropriate screen
   useEffect(() => {
     if (!barcode || barcodeQuery.isLoading) return
+
     if (barcodeQuery.data) {
       setProduct(barcodeQuery.data)
+      setContributionType('manual')
+      setPrice('')
       setScreen('price')
-    } else {
-      setScreen('search')
+      return
     }
+
+    setScreen('search')
   }, [barcode, barcodeQuery.isLoading, barcodeQuery.data])
 
+  useEffect(() => {
+    if (!preferredMarketId || !marketsQuery.data?.length) return
+    const found = marketsQuery.data.find((m) => m.id === preferredMarketId)
+    if (found) setMarket(found)
+  }, [preferredMarketId, marketsQuery.data])
+
+  useEffect(() => {
+    if (!barcodeQuery.isError || !barcode) return
+    Alert.alert('Falha ao buscar produto', 'Nao foi possivel consultar este codigo agora. Tente busca manual.')
+    setScreen('search')
+  }, [barcodeQuery.isError, barcode])
+
+  const selectFiscalItem = useCallback((item: NfeMatchedItem) => {
+    if (!item.product) return
+
+    setProduct(item.product)
+    setContributionType('qr_code')
+    setPrice(formatPriceInput(item.unitPrice || item.totalPrice))
+    setScreen('price')
+  }, [])
+
+  const processFiscalQr = useCallback(async (input: string) => {
+    setIsFiscalLookup(true)
+
+    try {
+      const { data } = await api.post<NfeScanResponse>('/scanner/nfe', { input })
+      const matchedItems = (data.items ?? []).filter((item) => item.matched && item.product)
+
+      setFiscalMarketName(data.market?.name ?? null)
+      setPreferredMarketId(data.market?.id ?? null)
+
+      if (!matchedItems.length) {
+        Alert.alert(
+          'Cupom lido, mas sem itens cadastrados',
+          'Nao encontramos produtos deste cupom no catalogo. Continue no modo manual.'
+        )
+        setContributionType('manual')
+        setScreen('search')
+        return
+      }
+
+      setNfeItems(matchedItems)
+
+      if (matchedItems.length === 1) {
+        selectFiscalItem(matchedItems[0])
+      } else {
+        setScreen('nfeItems')
+      }
+    } catch {
+      setContributionType('manual')
+      setBarcode(input)
+    } finally {
+      setIsFiscalLookup(false)
+    }
+  }, [selectFiscalItem])
+
   const handleBarcode = useCallback(
-    ({ data }: { data: string }) => {
+    ({ data, type }: { data: string; type?: string }) => {
       if (scanned || screen !== 'camera') return
+
       setScanned(true)
+      setRawScanData(data)
+
+      if (looksLikeFiscalQr(data, type)) {
+        void processFiscalQr(data)
+        return
+      }
+
+      setContributionType('manual')
       setBarcode(data)
     },
-    [scanned, screen],
+    [scanned, screen, processFiscalQr],
   )
 
   function openManual() {
     setBarcode(null)
+    setContributionType('manual')
     setSearchText('')
     setScreen('search')
   }
 
   function selectProduct(p: Product) {
     setProduct(p)
+    setContributionType('manual')
+    setPreferredMarketId(null)
     setMarket(null)
     setPrice('')
     setScreen('price')
@@ -67,7 +191,15 @@ export default function ScannerScreen() {
   function closeAll() {
     setScreen('camera')
     setScanned(false)
+
     setBarcode(null)
+    setRawScanData(null)
+    setIsFiscalLookup(false)
+    setNfeItems([])
+    setFiscalMarketName(null)
+    setPreferredMarketId(null)
+    setContributionType('manual')
+
     setSearchText('')
     setProduct(null)
     setMarket(null)
@@ -82,15 +214,22 @@ export default function ScannerScreen() {
 
     submitContribution.mutate(
       {
-        type: barcode ? 'qr_code' : 'manual',
+        type: contributionType,
         productId: product.id,
         marketId: market.id,
         price: numPrice,
+        qrData: contributionType === 'qr_code' ? rawScanData ?? undefined : undefined,
       },
       {
         onSuccess: () => {
           setSuccess(true)
           setTimeout(closeAll, 2500)
+        },
+        onError: (err: any) => {
+          Alert.alert(
+            'Erro ao enviar contribuicao',
+            err?.response?.data?.error ?? 'Nao foi possivel enviar agora. Tente novamente.'
+          )
         },
       },
     )
@@ -103,11 +242,11 @@ export default function ScannerScreen() {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.center}>
           <Ionicons name="camera-outline" size={56} color={Colors.textMuted} />
-          <Text style={styles.permTitle}>Câmera necessária</Text>
+          <Text style={styles.permTitle}>Camera necessaria</Text>
           <Text style={styles.permText}>
-            Para escanear produtos e ganhar pontos, permita o acesso à câmera.
+            Para escanear produtos e ganhar pontos, permita o acesso a camera.
           </Text>
-          <Button label="Permitir câmera" onPress={requestPermission} style={{ marginTop: Spacing.lg }} />
+          <Button label="Permitir camera" onPress={requestPermission} style={{ marginTop: Spacing.lg }} />
         </View>
       </SafeAreaView>
     )
@@ -115,7 +254,6 @@ export default function ScannerScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Scanner</Text>
         <TouchableOpacity style={styles.manualBtn} onPress={openManual}>
@@ -124,10 +262,9 @@ export default function ScannerScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Points info chips */}
       <View style={styles.ptsRow}>
         <View style={styles.ptsChip}>
-          <Text style={styles.ptsLabel}>Código de barras</Text>
+          <Text style={styles.ptsLabel}>Cupom fiscal (QR)</Text>
           <Text style={styles.ptsValue}>+30 pts</Text>
         </View>
         <View style={styles.ptsChip}>
@@ -140,7 +277,6 @@ export default function ScannerScreen() {
         </View>
       </View>
 
-      {/* Camera view */}
       <View style={styles.cameraWrap}>
         <CameraView
           style={StyleSheet.absoluteFillObject}
@@ -148,7 +284,6 @@ export default function ScannerScreen() {
           barcodeScannerSettings={{ barcodeTypes: ['qr', 'ean13', 'ean8', 'code128'] }}
         />
 
-        {/* Aiming frame corners */}
         <View style={styles.frameOuter}>
           <View style={styles.frame}>
             <View style={[styles.corner, styles.cornerTL]} />
@@ -158,20 +293,20 @@ export default function ScannerScreen() {
           </View>
         </View>
 
-        {/* Loading overlay while barcode lookup is in-flight */}
-        {scanned && barcodeQuery.isLoading && (
+        {scanned && (isFiscalLookup || barcodeQuery.isLoading) && (
           <View style={styles.lookupOverlay}>
             <ActivityIndicator color={Colors.primaryLight} size="large" />
-            <Text style={styles.lookupText}>Buscando produto…</Text>
+            <Text style={styles.lookupText}>
+              {isFiscalLookup ? 'Lendo cupom fiscal...' : 'Buscando produto...'}
+            </Text>
           </View>
         )}
 
         <View style={styles.hint}>
-          <Text style={styles.hintText}>Aponte para o código de barras do produto</Text>
+          <Text style={styles.hintText}>Aponte para o QR do cupom fiscal ou codigo de barras do produto</Text>
         </View>
       </View>
 
-      {/* ── Search Modal ──────────────────────────────────────── */}
       <Modal
         visible={screen === 'search'}
         transparent
@@ -185,7 +320,7 @@ export default function ScannerScreen() {
 
             <TextInput
               style={styles.searchInput}
-              placeholder="Digite o nome do produto…"
+              placeholder="Digite o nome do produto..."
               placeholderTextColor={Colors.textMuted}
               value={searchText}
               onChangeText={setSearchText}
@@ -224,7 +359,58 @@ export default function ScannerScreen() {
         </Pressable>
       </Modal>
 
-      {/* ── Market + Price Modal ──────────────────────────────── */}
+      <Modal
+        visible={screen === 'nfeItems'}
+        transparent
+        animationType="slide"
+        onRequestClose={closeAll}
+      >
+        <Pressable style={styles.overlay} onPress={closeAll}>
+          <Pressable style={styles.sheet} onPress={() => {}}>
+            <View style={styles.handle} />
+            <Text style={styles.sheetTitle}>Produtos do cupom</Text>
+
+            {fiscalMarketName && (
+              <View style={styles.receiptInfo}>
+                <Ionicons name="storefront-outline" size={14} color={Colors.primaryLight} />
+                <Text style={styles.receiptInfoText}>{fiscalMarketName}</Text>
+              </View>
+            )}
+
+            <Text style={styles.receiptHelp}>
+              Selecione o item que deseja enviar como contribuicao.
+            </Text>
+
+            <FlatList
+              data={nfeItems}
+              keyExtractor={(item, idx) => `${item.product?.id ?? 'item'}-${idx}`}
+              style={styles.resultList}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <TouchableOpacity style={styles.productRow} onPress={() => selectFiscalItem(item)}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.productName}>{item.product?.name ?? item.name}</Text>
+                    <Text style={styles.productMeta}>
+                      R$ {item.unitPrice.toFixed(2).replace('.', ',')} · {item.quantity} {item.unit}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+                </TouchableOpacity>
+              )}
+              ItemSeparatorComponent={() => <View style={styles.separator} />}
+            />
+
+            <Button
+              label="Nao encontrei meu item"
+              variant="ghost"
+              fullWidth
+              onPress={openManual}
+              style={{ marginTop: Spacing.md, marginBottom: Spacing.xl }}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <Modal
         visible={screen === 'price'}
         transparent
@@ -238,23 +424,27 @@ export default function ScannerScreen() {
             {success ? (
               <View style={styles.successBox}>
                 <Ionicons name="checkmark-circle" size={56} color={Colors.success} />
-                <Text style={styles.successTitle}>Contribuição enviada!</Text>
+                <Text style={styles.successTitle}>Contribuicao enviada!</Text>
                 <Text style={styles.successSub}>
-                  +{barcode ? '30' : '10'} pontos adicionados ao seu perfil
+                  +{contributionType === 'qr_code' ? '30' : '10'} pontos adicionados ao seu perfil
                 </Text>
               </View>
             ) : (
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                {/* Selected product */}
                 {product && (
                   <View style={styles.productCard}>
                     <Text style={styles.productCardLabel}>Produto selecionado</Text>
                     <Text style={styles.productCardName}>{product.name}</Text>
                     <Text style={styles.productCardMeta}>{product.category} · {product.unit}</Text>
+                    {contributionType === 'qr_code' && (
+                      <View style={styles.fiscalBadge}>
+                        <Ionicons name="receipt-outline" size={12} color={Colors.primaryLight} />
+                        <Text style={styles.fiscalBadgeText}>Cupom fiscal</Text>
+                      </View>
+                    )}
                   </View>
                 )}
 
-                {/* Market selection */}
                 <Text style={styles.sectionLabel}>Selecione o supermercado</Text>
                 {marketsQuery.isLoading ? (
                   <ActivityIndicator color={Colors.primaryLight} style={{ marginBottom: Spacing.md }} />
@@ -286,8 +476,7 @@ export default function ScannerScreen() {
                   </View>
                 )}
 
-                {/* Price input */}
-                <Text style={[styles.sectionLabel, { marginTop: Spacing.lg }]}>Preço (R$)</Text>
+                <Text style={[styles.sectionLabel, { marginTop: Spacing.lg }]}>Preco (R$)</Text>
                 <TextInput
                   style={styles.priceInput}
                   placeholder="0,00"
@@ -298,7 +487,7 @@ export default function ScannerScreen() {
                 />
 
                 <Button
-                  label={submitContribution.isPending ? 'Enviando…' : 'Enviar contribuição'}
+                  label={submitContribution.isPending ? 'Enviando...' : 'Enviar contribuicao'}
                   loading={submitContribution.isPending}
                   fullWidth
                   size="lg"
@@ -404,6 +593,37 @@ const styles = StyleSheet.create({
   productCardLabel: { fontSize: Typography.xs, color: Colors.primaryLight, fontWeight: Typography.semibold },
   productCardName: { fontSize: Typography.base, color: Colors.text, fontWeight: Typography.bold },
   productCardMeta: { fontSize: Typography.sm, color: Colors.textSecondary },
+
+  fiscalBadge: {
+    marginTop: Spacing.sm,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primaryDim,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+  },
+  fiscalBadgeText: { fontSize: Typography.xs, color: Colors.primaryLight, fontWeight: Typography.semibold },
+
+  receiptInfo: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: Spacing.sm,
+    backgroundColor: Colors.primaryDim,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+  },
+  receiptInfoText: { color: Colors.primaryLight, fontSize: Typography.xs, fontWeight: Typography.semibold },
+  receiptHelp: { fontSize: Typography.sm, color: Colors.textSecondary, marginBottom: Spacing.md },
 
   sectionLabel: {
     fontSize: Typography.sm, fontWeight: Typography.semibold, color: Colors.textSecondary,
