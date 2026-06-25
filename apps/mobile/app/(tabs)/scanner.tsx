@@ -9,56 +9,14 @@ import { Ionicons } from '@expo/vector-icons'
 import { useSubmitContribution } from '@hooks/useContributions'
 import { useProductByBarcode, useProductSearch } from '@hooks/useProducts'
 import { useMarkets } from '@hooks/useMarkets'
-import api from '@services/api'
+import { looksLikeFiscalQr, processFiscalQr as processFiscalQrAction, formatPriceInput } from '@services/scanner'
 import { Button } from '@components/ui'
 import { Colors, Typography, Spacing, Radius } from '@constants/index'
 import type { Product, Market } from '@/types'
+import type { NfeMatchedItem } from '@/src/modules/scanner/domain/ScannerTypes'
 
 type Screen = 'camera' | 'search' | 'nfeItems' | 'price'
 type ContributionType = 'qr_code' | 'manual'
-
-interface NfeMatchedItem {
-  code: string | null
-  name: string
-  quantity: number
-  unit: string
-  unitPrice: number
-  totalPrice: number
-  product: Product | null
-  matched: boolean
-}
-
-interface NfeScanResponse {
-  accessKey: string | null
-  issuedAt: string | null
-  total: number | null
-  emitter: {
-    cnpj: string | null
-    name: string | null
-    address: string | null
-    city: string | null
-  }
-  market: {
-    id: string
-    name: string
-    city: string
-  } | null
-  items: NfeMatchedItem[]
-}
-
-function looksLikeFiscalQr(data: string, scannerType?: string) {
-  const value = data.trim()
-  const normalizedType = String(scannerType ?? '').toLowerCase()
-
-  if (/^\d{44}$/.test(value)) return true
-  if (normalizedType.includes('qr') && /nfce|nfe|sefaz|fazenda|chnfe=|[?&]p=/i.test(value)) return true
-  return /^https?:\/\//i.test(value) && /nfce|nfe|sefaz|fazenda|chnfe=|[?&]p=/i.test(value)
-}
-
-function formatPriceInput(value: number) {
-  if (!Number.isFinite(value) || value <= 0) return ''
-  return value.toFixed(2).replace('.', ',')
-}
 
 export default function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions()
@@ -123,13 +81,12 @@ export default function ScannerScreen() {
     setIsFiscalLookup(true)
 
     try {
-      const { data } = await api.post<NfeScanResponse>('/scanner/nfe', { input })
-      const matchedItems = (data.items ?? []).filter((item) => item.matched && item.product)
+      const result = await processFiscalQrAction(input)
 
-      setFiscalMarketName(data.market?.name ?? null)
-      setPreferredMarketId(data.market?.id ?? null)
+      setFiscalMarketName(result.marketName)
+      setPreferredMarketId(result.preferredMarketId)
 
-      if (!matchedItems.length) {
+      if (!result.matchedItems.length) {
         Alert.alert(
           'Cupom lido, mas sem itens cadastrados',
           'Nao encontramos produtos deste cupom no catalogo. Continue no modo manual.'
@@ -139,10 +96,10 @@ export default function ScannerScreen() {
         return
       }
 
-      setNfeItems(matchedItems)
+      setNfeItems(result.matchedItems)
 
-      if (matchedItems.length === 1) {
-        selectFiscalItem(matchedItems[0])
+      if (result.matchedItems.length === 1) {
+        selectFiscalItem(result.matchedItems[0])
       } else {
         setScreen('nfeItems')
       }

@@ -34,14 +34,13 @@ function getNextLevel(level: string) {
   return LEVEL_THRESHOLDS[idx + 1]?.level ?? null
 }
 
-type IoniconName = React.ComponentProps<typeof Ionicons>['name']
-
-const BADGE_ICONS: Record<string, string> = {
-  primeira_lista: 'clipboard-outline',
-  colaborador_iniciante: 'people-outline',
-  verificador: 'checkmark-circle-outline',
-  sequencia_7dias: 'flame-outline',
-  embaixador: 'trophy-outline',
+function getBadgeIconName(badgeType: string): string {
+  if (badgeType === 'primeira_lista') return 'clipboard-outline'
+  if (badgeType === 'colaborador_iniciante') return 'people-outline'
+  if (badgeType === 'verificador') return 'checkmark-circle-outline'
+  if (badgeType === 'sequencia_7dias') return 'flame-outline'
+  if (badgeType === 'embaixador') return 'trophy-outline'
+  return 'medal-outline'
 }
 
 interface ContributionHistoryItem {
@@ -271,7 +270,7 @@ export default function PerfilScreen() {
             <View style={styles.badgesGrid}>
               {badges.map((b) => (
                 <View key={b.badge_type} style={styles.badgeCard}>
-                  <Ionicons name={(BADGE_ICONS[b.badge_type] ?? 'medal-outline') as IoniconName} size={24} color={Colors.primaryLight} />
+                  <Ionicons name={getBadgeIconName(b.badge_type) as any} size={24} color={Colors.primaryLight} />
                   <Text style={styles.badgeContent} numberOfLines={2} adjustsFontSizeToFit>{b.badge_type.replace(/_/g, ' ')}</Text>
                 </View>
               ))}
