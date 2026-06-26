@@ -1,213 +1,157 @@
 # Lista Smart
 
-Plataforma colaborativa de comparação de preços em supermercados.  
-App mobile único com dois perfis (consumidor e parceiro) · Landing page institucional · API REST compartilhada.
+Plataforma colaborativa e avançada de comparação de preços em supermercados. Desenvolvida para conectar consumidores em busca de economia a mercados em busca de visibilidade e fidelização de clientes.
+
+O ecossistema do projeto é formado por um aplicativo móvel (atendendo tanto usuários finais quanto lojistas), uma API REST centralizada e uma Landing Page institucional.
 
 ---
 
-## Pré-requisitos
+## Principais Funcionalidades
 
-| Ferramenta | Versão mínima |
+### Para o Consumidor (Consumer)
+- **Comparação Inteligente:** Mapeamento e exibição dos menores preços para produtos na região do usuário.
+- **Listas Colaborativas:** Criação e compartilhamento de listas de compras sincronizadas em tempo real.
+- **Leitor de Código de Barras (Scanner):** Adição de produtos e verificação ágil de preços.
+- **Gamificação e Ranking:** Sistema de incentivos onde o usuário ganha pontos e insígnias ao contribuir com atualizações de preços na comunidade.
+- **Modo Offline-first:** Suporte a cache inteligente (utilizando React Query) e armazenamento local, garantindo usabilidade mesmo sem conexão à internet.
+- **Interface Premium:** Experiência de usuário fluida com suporte a micro-animações (Moti/Reanimated), Haptic Feedback e Skeleton Loaders.
+
+### Para o Parceiro (Partner / Supermercados)
+- **Dashboard Analítico:** Visualização de tendências do mercado, produtos mais buscados e performance de precificação.
+- **Gestão de Promoções:** Publicação de ofertas exclusivas diretamente na plataforma para atração de clientes nas proximidades.
+- **Exportação de Relatórios:** Geração de relatórios gerenciais das operações em formato CSV.
+
+---
+
+## Tecnologias Utilizadas
+
+A arquitetura do projeto baseia-se em um Monorepo gerenciado pelo Turborepo e pnpm.
+
+- **Aplicativo Mobile:** React Native, Expo (SDK 54), Expo Router, Zustand (Gerenciamento de Estado), TanStack React Query (Cache e Offline-first), Moti & Reanimated (Animações), Zod.
+- **Backend (API):** Node.js, Express, PostgreSQL, Zod para validação.
+- **Frontend (Web):** Next.js 14, React.
+- **Pacotes Compartilhados (Shared):** Centralização de Tipagens (TypeScript) e Schemas (Zod).
+
+---
+
+## Pré-requisitos do Sistema
+
+| Ferramenta | Versão Mínima Recomendada |
 |---|---|
 | Node.js | 18+ |
-| pnpm | 8+ (`npm i -g pnpm`) |
+| pnpm | 8+ (`npm install -g pnpm`) |
 | PostgreSQL | 15+ |
 
 ---
 
-## Setup inicial (apenas na primeira vez)
+## Configuração do Ambiente (Primeira Execução)
 
-### 1. Instalar dependências
-
+### 1. Instalação de Dependências
 ```bash
 pnpm install
 ```
 
-### 2. Criar o banco de dados
+### 2. Configuração do Banco de Dados
+No seu servidor PostgreSQL (por exemplo, via pgAdmin), crie um banco de dados vazio com o nome `listasmart`.
 
-No **pgAdmin**, clique com botão direito em **Databases → Create → Database** e crie o banco com o nome `listasmart`. Só o banco vazio — as tabelas serão criadas pelo migrate.
-
-### 3. Configurar variáveis de ambiente
-
-Crie o arquivo `.env` na raiz do projeto (`listasmart/.env`):
+### 3. Variáveis de Ambiente
+Crie um arquivo `.env` no diretório raiz do projeto. Utilize as variáveis abaixo como referência:
 
 ```env
 DATABASE_URL=postgresql://postgres:SUA_SENHA@localhost:5432/listasmart
-JWT_SECRET=uma_chave_secreta_qualquer_com_pelo_menos_32_chars
+JWT_SECRET=sua_chave_secreta_criptografica
 JWT_EXPIRES_IN=30d
 PORT=3001
 CORS_ORIGIN=http://localhost:3000
 NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
 EXPO_PUBLIC_API_URL=http://localhost:3001/api/v1
 ```
+*(As credenciais de `postgres` e `SUA_SENHA` devem refletir a configuração do seu ambiente local).*
 
-> Troque `postgres` e `SUA_SENHA` pelo usuário/senha do seu PostgreSQL local.
-
-### 4. Criar as tabelas (migrations)
-
+### 4. Execução das Migrations e Inserção de Dados (Seed)
+Na raiz do projeto, execute os comandos abaixo para inicializar a estrutura do banco de dados:
 ```bash
 pnpm --filter @listasmart/database migrate
-```
-
-Saída esperada:
-```
-  ✓  001__create_tables.sql
-
-✅ Migrations concluídas — 1 aplicadas, 0 ignoradas
-```
-
-### 5. Popular o banco com dados de teste
-
-```bash
 pnpm --filter @listasmart/database seed
 ```
 
 ---
 
-## Rodando o projeto
+## Inicialização do Projeto
 
-### Backend (API)
+O Turborepo permite iniciar todos os serviços simultaneamente ou de maneira individualizada.
 
+### Inicialização Completa
 ```bash
-# No terminal do IntelliJ ou VSCode, da raiz do monorepo:
-pnpm --filter @listasmart/api dev
-
-# API disponível em: http://localhost:3001
+pnpm dev
 ```
 
-### Frontend web (landing page)
+### Inicialização Individualizada:
 
+**Backend (API)**
+```bash
+pnpm --filter @listasmart/api dev
+# Disponível em: http://localhost:3001
+```
+
+**Aplicativo Mobile (Expo)**
+```bash
+pnpm --filter @listasmart/mobile start
+# Comandos interativos: Pressione 'a' para emulador Android, 'i' para iOS ou utilize o aplicativo Expo Go.
+```
+
+**Web (Landing Page)**
 ```bash
 pnpm --filter @listasmart/web dev
-
 # Disponível em: http://localhost:3000
 ```
 
-### App mobile (Expo)
+---
 
-```bash
-pnpm --filter @listasmart/mobile start
+## Contas de Teste e Homologação
 
-# Escaneie o QR Code com o Expo Go no celular
-```
+Para propósitos de testes e validação, o script de *seed* gera as seguintes contas predefinidas (todas as senhas de consumidores são `senha123` e parceiros `admin123`):
+
+| E-mail | Senha | Perfil | Nível / Pontuação |
+|---|---|---|---|
+| `dev@listasmart.com` | `senha123` | Consumidor | Padrão |
+| `maria@example.com` | `senha123` | Consumidor | Colaboradora (380 pts) |
+| `joao@example.com` | `senha123` | Consumidor | Colaborador (260 pts) |
+| `parceiro@atacadao.com` | `admin123` | Parceiro | Gestor Comercial |
 
 ---
 
-## Verificação rápida
-
-Com a API rodando, teste o login pelo terminal:
-
-```bash
-curl -X POST http://localhost:3001/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"dev@listasmart.com\",\"password\":\"senha123\"}"
-```
-
-Deve retornar `{ "user": {...}, "token": "..." }`.
-
----
-
-## Usuários de teste (criados pelo seed)
-
-| E-mail | Senha | Perfil |
-|---|---|---|
-| `dev@listasmart.com` | `senha123` | Consumidor |
-| `maria@example.com` | `senha123` | Consumidor (colaboradora, 380 pts) |
-| `joao@example.com` | `senha123` | Consumidor (colaborador, 260 pts) |
-| `parceiro@atacadao.com` | `admin123` | Parceiro (Atacadão Vila Madalena) |
-
----
-
-## Migrations versionadas
-
-As migrations ficam em `packages/database/src/migrations/` com numeração sequencial.
-
-```
-001__create_tables.sql   ← schema inicial
-002__nome_da_mudanca.sql ← futuras alterações
-```
-
-Para criar uma nova migration:
-1. Crie o arquivo `00N__descricao.sql` na pasta de migrations
-2. Execute `pnpm --filter @listasmart/database migrate`
-
-O runner controla quais migrations já foram aplicadas na tabela `schema_migrations`. Rodar o comando de novo é seguro — migrations já aplicadas são ignoradas.
-
----
-
-## Portas
-
-| Serviço | Porta |
-|---|---|
-| API (backend) | 3001 |
-| Web (Next.js) | 3000 |
-| Mobile (Expo) | 8081 |
-| PostgreSQL | 5432 |
-
----
-
-## Estrutura
+## Estrutura de Diretórios (Monorepo)
 
 ```
 listasmart/
 ├── apps/
-│   ├── mobile/          → React Native + Expo (dois fluxos: consumer / partner)
-│   └── web/             → Next.js 14 — landing page institucional
+│   ├── mobile/          → Código fonte do App (React Native + Expo)
+│   └── web/             → Código fonte da Landing Page (Next.js 14)
 ├── packages/
-│   ├── api/             → Node.js + Express — todas as rotas
-│   ├── database/        → migrations, seed, schema
-│   └── shared/          → tipos TypeScript + schemas Zod (importados por todos)
+│   ├── api/             → Código fonte do Backend (Node + Express + DB logic)
+│   ├── database/        → Scripts de Migrations, Seeders e SQL Schemas
+│   └── shared/          → Tipos globais TypeScript e Zod Schemas
 └── docs/
-    └── context.md       → regras de negócio e decisões técnicas
+    └── context.md       → Documentação técnica detalhada e regras de negócio
 ```
 
 ---
 
-## Rotas da API
+## Endpoints da API (Base Path: `/api/v1`)
 
-Base: `http://localhost:3001/api/v1`
+- **Autenticação:** `POST /auth/register`, `POST /auth/login`
+- **Gestão de Usuário:** `GET /users/me`, `GET /users/me/badges`
+- **Gestão de Listas:** `GET /lists`, `POST /lists`, `GET /lists/:id/items`
+- **Catálogo de Produtos:** `GET /products`, `GET /prices/compare`
+- **Gamificação e Comunidade:** `POST /contributions`, `GET /ranking`
+- **Portal do Parceiro:** `GET /markets/:id/dashboard`, `POST /markets/:id/promotions`
 
-```
-POST   /auth/register
-POST   /auth/login
+---
 
-GET    /users/me
-PATCH  /users/me
-GET    /users/me/badges
+## Equipe de Desenvolvimento
 
-GET    /lists
-POST   /lists
-GET    /lists/:id
-GET    /lists/:id/items
-POST   /lists/:id/items
-PATCH  /lists/:id/items/:itemId
-DELETE /lists/:id/items/:itemId
-
-GET    /products
-GET    /products/:id
-GET    /products/:id/prices
-
-GET    /prices/compare?product_id=&lat=&lng=&radius=
-
-POST   /contributions
-GET    /contributions/history
-
-GET    /markets
-GET    /markets/:id
-GET    /markets/:id/prices
-GET    /markets/:id/promotions
-GET    /markets/:id/dashboard    (role: partner)
-POST   /markets/:id/promotions   (role: partner)
-DELETE /markets/:id/promotions/:promoId (role: partner)
-GET    /markets/:id/report       (role: partner, retorna CSV)
-
-GET    /ranking
-
-GET    /analytics/overview       (role: consumer)
-GET    /analytics/prices?product_id=&period=30d
-GET    /analytics/markets        (role: partner)
-
-POST   /scanner/nfe
-
-POST   /leads
-```
+Projeto desenvolvido por:
+- **Gustavo Constante**
+- **João Marcos Vieira**
+- **Brayan Miguel Favarin**
