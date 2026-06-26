@@ -68,12 +68,22 @@ EXPO_PUBLIC_API_URL=http://localhost:3001/api/v1
 ```
 *(As credenciais de `postgres` e `SUA_SENHA` devem refletir a configuração do seu ambiente local).*
 
-### 4. Execução das Migrations e Inserção de Dados (Seed)
-Na raiz do projeto, execute os comandos abaixo para inicializar a estrutura do banco de dados:
+### 4. Configuração da Estrutura do Banco (Migrations e Schema)
+
+O projeto possui um sistema automatizado para gerar as tabelas. Na raiz do projeto, execute os comandos abaixo:
 ```bash
 pnpm --filter @listasmart/database migrate
 pnpm --filter @listasmart/database seed
 ```
+
+Caso você esteja configurando o projeto em um novo computador e não consiga utilizar o script de migration automático (ou prefira inicializar o banco de dados manualmente), nós disponibilizamos um script SQL completo e independente que cria as tabelas e já insere os dados iniciais de teste (seed).
+
+Para executá-lo, utilize o comando `psql` (certifique-se de que o PostgreSQL está rodando e de que o banco `listasmart` já foi criado vazio):
+
+```bash
+psql -U postgres -d listasmart -f packages/database/setup.sql
+```
+*(Caso seu usuário tenha senha ou seja diferente de `postgres`, ajuste o comando conforme a necessidade. O terminal solicitará a senha, se houver).*
 
 ---
 
