@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@services/api'
 import type { Product, PriceComparison } from '@/types'
 
@@ -44,5 +44,18 @@ export function usePriceComparison(listId: string | null, lat?: number, lng?: nu
         .then((r) => r.data),
     enabled: Boolean(listId),
     staleTime: 1000 * 60 * 3,
+  })
+}
+
+export function useCreateProduct() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: { name: string; category: string; unit: string; barcode?: string | null }) => {
+      const res = await api.post('/products', data)
+      return res.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+    },
   })
 }

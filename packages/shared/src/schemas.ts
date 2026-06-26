@@ -16,6 +16,7 @@ export const loginSchema = z.object({
 export const updateUserSchema = z.object({
   name: z.string().min(2).optional(),
   email: z.string().email().optional(),
+  password: z.string().min(8, 'Senha deve ter ao menos 8 caracteres').optional(),
 })
 
 export const createListSchema = z.object({

@@ -8,9 +8,22 @@ const router = Router()
 
 router.get('/', authUser, wrap(async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT id, name, is_active, created_at FROM lists
-     WHERE user_id = $1
-     ORDER BY created_at DESC`,
+    `SELECT 
+       l.id, 
+       l.name, 
+       l.is_active, 
+       l.created_at,
+       COALESCE(
+         json_agg(
+           json_build_object('id', li.id, 'isChecked', li.is_checked)
+         ) FILTER (WHERE li.id IS NOT NULL),
+         '[]'
+       ) AS items
+     FROM lists l
+     LEFT JOIN list_items li ON li.list_id = l.id
+     WHERE l.user_id = $1
+     GROUP BY l.id
+     ORDER BY l.created_at DESC`,
     [req.user!.id]
   )
   res.json(rows)

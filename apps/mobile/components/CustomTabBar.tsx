@@ -1,18 +1,17 @@
 import { View, TouchableOpacity, StyleSheet, Dimensions } from 'react-native'
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Colors } from '@constants/index'
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name']
 
-export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+export default function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets()
 
   return (
     <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 16) }]}>
       <View style={styles.container}>
-        {state.routes.map((route, index) => {
+        {state.routes.map((route: any, index: number) => {
           const { options } = descriptors[route.key]
 
           // Ignore hidden route rendered outside the custom bar

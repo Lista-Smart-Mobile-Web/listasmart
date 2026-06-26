@@ -1,8 +1,17 @@
 import { Router } from 'express'
 import pool from '../db'
 import { wrap } from '../middleware/asyncWrap'
+import { authUser } from '../middleware/auth'
+import { z } from 'zod'
 
 const router = Router()
+
+const createProductSchema = z.object({
+  name: z.string().min(2),
+  category: z.string().min(2),
+  unit: z.enum(['un', 'kg', 'g', 'l', 'ml', 'dz']),
+  barcode: z.string().optional()
+})
 
 router.get('/', wrap(async (req, res) => {
   const { q, category, barcode } = req.query
@@ -28,6 +37,21 @@ router.get('/', wrap(async (req, res) => {
     params
   )
   res.json(rows)
+}))
+
+router.post('/', authUser, wrap(async (req, res) => {
+  const parsed = createProductSchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
+
+  const { name, category, unit, barcode } = parsed.data
+
+  const { rows: [product] } = await pool.query(
+    `INSERT INTO products (name, category, unit, barcode) 
+     VALUES ($1, $2, $3, $4) 
+     RETURNING *`,
+    [name, category, unit, barcode || null]
+  )
+  res.status(201).json(product)
 }))
 
 router.get('/:id', wrap(async (req, res) => {

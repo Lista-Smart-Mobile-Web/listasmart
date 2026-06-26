@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { LogBox } from 'react-native'
 import { useOfflineStore } from '@store/useOfflineStore'
 import { useListStore } from '@store/useListStore'
 import { initDB } from '@services/db'
@@ -14,6 +15,24 @@ import {
 } from '@services/notifications'
 import { ToastHost } from '@components/ui'
 import { Colors } from '@constants/index'
+
+// Intercepta e silencia os warnings no terminal do Metro Bundler
+const originalWarn = console.warn;
+console.warn = (...args) => {
+  if (typeof args[0] === 'string') {
+    if (args[0].includes("Deep imports from the 'react-native' package are deprecated")) return;
+    if (args[0].includes("expo-notifications: Android Push notifications")) return;
+    if (args[0].includes("\`expo-notifications\` functionality is not fully supported in Expo Go")) return;
+  }
+  originalWarn(...args);
+};
+
+// Oculta as caixas amarelas na tela do aplicativo
+LogBox.ignoreLogs([
+  "Deep imports from the 'react-native' package are deprecated",
+  "expo-notifications: Android Push notifications",
+  "`expo-notifications` functionality is not fully supported in Expo Go",
+])
 
 
 const queryClient = new QueryClient({

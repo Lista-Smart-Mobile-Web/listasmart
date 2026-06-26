@@ -12,13 +12,22 @@ export function useLists() {
   const query = useQuery({
     queryKey: ['lists'],
     queryFn: async () => {
-      const { data } = await api.get<{ id: string; name: string; is_active: boolean; created_at: string }[]>('/lists')
+      const { data } = await api.get<{ id: string; name: string; is_active: boolean; created_at: string; items?: { id: string; isChecked: boolean }[] }[]>('/lists')
       const mapped: ShoppingListLocal[] = data.map((l) => ({
         id: l.id,
         name: l.name,
         isActive: l.is_active,
         createdAt: l.created_at,
-        items: [],
+        items: (l.items || []).map((i) => ({
+          id: i.id,
+          listId: l.id,
+          productId: '',
+          name: '',
+          category: '',
+          unit: '',
+          quantity: 1,
+          isChecked: i.isChecked,
+        })),
       }))
       updateFromServer(mapped)
       return mapped

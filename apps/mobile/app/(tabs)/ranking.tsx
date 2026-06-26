@@ -1,10 +1,13 @@
+import { useState } from 'react'
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useAuthStore } from '@store/useAuthStore'
 import { useRanking } from '@hooks/useContributions'
-import { Badge } from '@components/ui'
+import { Badge, ScreenHeader, EmptyState, LoadingScreen } from '@components/ui'
+import { NotificationsModal } from '@components/NotificationsModal'
+import { useNotificationStore } from '@store/useNotificationStore'
 import { Colors, Typography, Spacing, Radius } from '@constants/index'
 import type { RankingEntry } from '@/types'
 
@@ -20,31 +23,27 @@ const LEVEL_BADGE: Record<string, Parameters<typeof Badge>[0]['color']> = {
 
 export default function RankingScreen() {
   const currentUser = useAuthStore((s) => s.user)
-  const { data: ranking = [], isLoading } = useRanking()
+  const { data, isLoading } = useRanking()
+  const ranking = data?.leaderboard || []
+  const myEntry = data?.me || null
 
-  const myEntry = ranking.find((r) => r.userId === currentUser?.id)
+  const [notifVisible, setNotifVisible] = useState(false)
+  const notifications = useNotificationStore((s) => s.notifications)
+  const hasUnread = notifications.some((n) => !n.isRead)
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Global Style Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.headerBtn}>
-          <Ionicons name="notifications-outline" size={24} color={Colors.textSecondary} />
-          {/* Notification dot */}
-          <View style={styles.notifDot} />
-        </TouchableOpacity>
-        
-        <View style={styles.headerCenter}>
-          <View style={styles.logoBox}>
-            <Text style={styles.logoL}>L</Text>
-          </View>
-          <Text style={styles.appName}>Ranking</Text>
-        </View>
-
-        <TouchableOpacity style={styles.avatarWrap} onPress={() => router.push('/(tabs)/perfil')}>
-          <Text style={styles.avatarText}>{currentUser?.name?.[0]?.toUpperCase() ?? '?'}</Text>
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        title="Ranking"
+        showNotifications
+        hasUnread={hasUnread}
+        onNotificationPress={() => setNotifVisible(true)}
+        rightElement={
+          <TouchableOpacity style={styles.avatarWrap} onPress={() => router.push('/(tabs)/perfil')}>
+            <Text style={styles.avatarText}>{currentUser?.name?.[0]?.toUpperCase() ?? '?'}</Text>
+          </TouchableOpacity>
+        }
+      />
 
       {/* Posição do usuário atual (Bento Box highlight) */}
       {myEntry && (
@@ -68,15 +67,13 @@ export default function RankingScreen() {
       )}
 
       {isLoading ? (
-        <View style={styles.loading}>
-          <ActivityIndicator color={Colors.primaryLight} />
-        </View>
+        <LoadingScreen message="Atualizando ranking..." />
       ) : ranking.length === 0 ? (
-        <View style={styles.empty}>
-          <Ionicons name="trophy-outline" size={52} color={Colors.textMuted} />
-          <Text style={styles.emptyTitle}>Ranking vazio</Text>
-          <Text style={styles.emptyText}>Seja o primeiro a contribuir com preços esta semana!</Text>
-        </View>
+        <EmptyState
+          icon="trophy-outline"
+          title="Ranking vazio"
+          description="Seja o primeiro a contribuir com preços esta semana e assuma o topo!"
+        />
       ) : (
         <FlatList
           data={ranking}
@@ -115,6 +112,7 @@ export default function RankingScreen() {
           }}
         />
       )}
+      <NotificationsModal visible={notifVisible} onClose={() => setNotifVisible(false)} />
     </SafeAreaView>
   )
 }
@@ -122,30 +120,6 @@ export default function RankingScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.bg },
 
-  header: { 
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
-    paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.md 
-  },
-  headerBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Colors.surface,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: Colors.border,
-  },
-  notifDot: {
-    position: 'absolute', top: 8, right: 10,
-    width: 6, height: 6, borderRadius: 3,
-    backgroundColor: Colors.primaryLight,
-  },
-  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  logoBox: {
-    width: 28, height: 28, borderRadius: 8,
-    backgroundColor: Colors.primaryLight,
-    alignItems: 'center', justifyContent: 'center'
-  },
-  logoL: { fontSize: 16, fontWeight: '900', color: '#1a0d00' },
-  appName: { fontSize: 20, fontWeight: '800', color: Colors.text, letterSpacing: -0.5 },
-  
   avatarWrap: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: Colors.primaryDim,
@@ -168,12 +142,6 @@ const styles = StyleSheet.create({
   myRight: { alignItems: 'flex-end' },
   myPoints: { fontSize: 28, fontWeight: Typography.extrabold, color: Colors.primaryLight },
   myPtsLabel: { fontSize: Typography.xs, color: Colors.textSecondary },
-
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.xxl },
-  emptyTitle: { fontSize: Typography.lg, fontWeight: Typography.bold, color: Colors.text },
-  emptyText: { fontSize: Typography.sm, color: Colors.textMuted, textAlign: 'center' },
 
   rankNum: { width: 32, fontSize: 16, fontWeight: '700', color: Colors.textSecondary, textAlign: 'center' },
   medalWrap: { width: 32, alignItems: 'center', justifyContent: 'center' },

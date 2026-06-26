@@ -10,6 +10,10 @@ import { registerForPushNotifications } from '@services/notifications'
 import { DEFAULT_NOTIFICATION_PREFS, loadNotificationPrefs, saveNotificationPrefs, type NotificationPrefs } from '@services/notificationPrefs'
 import { useAuthStore } from '@store/useAuthStore'
 import { Badge, Button } from '@components/ui'
+import { BrandLogo } from '@components/BrandLogo'
+import { NotificationsModal } from '@components/NotificationsModal'
+import { EditProfileModal } from '@components/EditProfileModal'
+import { useNotificationStore } from '@store/useNotificationStore'
 import { Colors, Typography, Spacing, Radius } from '@constants/index'
 
 const LEVEL_THRESHOLDS = [
@@ -57,14 +61,14 @@ interface ContributionHistoryItem {
 
 function contributionTypeLabel(type: ContributionHistoryItem['type']) {
   if (type === 'qr_code') return 'Cupom QR'
-  if (type === 'confirm') return 'Confirmacao'
+  if (type === 'confirm') return 'Confirmação'
   return 'Manual'
 }
 
 function contributionStatusLabel(status: ContributionHistoryItem['status']) {
   if (status === 'approved') return 'Aprovado'
   if (status === 'rejected') return 'Rejeitado'
-  return 'Em analise'
+  return 'Em análise'
 }
 
 function contributionStatusColor(status: ContributionHistoryItem['status']) {
@@ -76,12 +80,13 @@ function contributionStatusColor(status: ContributionHistoryItem['status']) {
 export default function PerfilScreen() {
   const { user, logout, updateUser } = useAuthStore()
   const [editOpen, setEditOpen] = useState(false)
-  const [editName, setEditName] = useState('')
-  const [editEmail, setEditEmail] = useState('')
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifLoading, setNotifLoading] = useState(false)
   const [notifSaving, setNotifSaving] = useState(false)
   const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS)
+  const [notifVisible, setNotifVisible] = useState(false)
+  const notifications = useNotificationStore((s) => s.notifications)
+  const hasUnread = notifications.some((n) => !n.isRead)
 
   const { data: badges = [] } = useQuery<{ badge_type: string; earned_at: string }[]>({
     queryKey: ['badges'],
@@ -103,57 +108,11 @@ export default function PerfilScreen() {
   const nextLevel = getNextLevel(level)
   const current = LEVEL_THRESHOLDS.find((l) => l.level === level)
   const ptsToNext = current && current.max !== Infinity ? current.max - pts + 1 : null
-
-  const updateProfile = useMutation({
-    mutationFn: async (payload: { name: string; email: string }) => {
-      const { data } = await api.patch('/users/me', payload)
-      return data as { name?: string; email?: string }
-    },
-    onSuccess: (data) => {
-      updateUser({
-        name: data.name ?? editName.trim(),
-        email: data.email ?? editEmail.trim(),
-      })
-      setEditOpen(false)
-      Alert.alert('Perfil atualizado', 'Seus dados foram salvos com sucesso.')
-    },
-    onError: (err: any) => {
-      Alert.alert(
-        'Erro ao salvar',
-        err?.response?.data?.error ?? 'Nao foi possivel atualizar seus dados agora.'
-      )
-    },
-  })
-
   function confirmLogout() {
     Alert.alert('Sair', 'Tem certeza que quer sair?', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Sair', style: 'destructive', onPress: logout },
     ])
-  }
-
-  function openEditAccount() {
-    setEditName(user?.name ?? '')
-    setEditEmail(user?.email ?? '')
-    setEditOpen(true)
-  }
-
-  function submitAccountEdit() {
-    const cleanName = editName.trim()
-    const cleanEmail = editEmail.trim().toLowerCase()
-
-    if (cleanName.length < 2) {
-      Alert.alert('Nome invalido', 'Informe um nome com ao menos 2 caracteres.')
-      return
-    }
-
-    const emailOk = /^\S+@\S+\.\S+$/.test(cleanEmail)
-    if (!emailOk) {
-      Alert.alert('E-mail invalido', 'Informe um e-mail valido para continuar.')
-      return
-    }
-
-    updateProfile.mutate({ name: cleanName, email: cleanEmail })
   }
 
   async function openNotifications() {
@@ -163,7 +122,7 @@ export default function PerfilScreen() {
       setNotifPrefs(await loadNotificationPrefs())
     } catch {
       setNotifPrefs(DEFAULT_NOTIFICATION_PREFS)
-      Alert.alert('Aviso', 'Nao foi possivel carregar suas preferencias. Usando padrao.')
+      Alert.alert('Aviso', 'Não foi possível carregar suas preferências. Usando o padrão.')
     } finally {
       setNotifLoading(false)
     }
@@ -177,8 +136,8 @@ export default function PerfilScreen() {
     const token = await registerForPushNotifications()
     if (!token) {
       Alert.alert(
-        'Permissao nao concedida',
-        'Ative a permissao de notificacoes no sistema para receber alertas.'
+        'Permissão não concedida',
+        'Ative a permissão de notificações nas configurações do sistema para receber alertas.'
       )
     }
   }
@@ -188,9 +147,9 @@ export default function PerfilScreen() {
     try {
       await saveNotificationPrefs(notifPrefs)
       setNotifOpen(false)
-      Alert.alert('Preferencias salvas', 'Suas configuracoes de notificacao foram atualizadas.')
+      Alert.alert('Preferências salvas', 'Suas configurações de notificação foram atualizadas.')
     } catch {
-      Alert.alert('Erro ao salvar', 'Nao foi possivel salvar as preferencias agora.')
+      Alert.alert('Erro ao salvar', 'Não foi possível salvar as preferências agora.')
     } finally {
       setNotifSaving(false)
     }
@@ -200,14 +159,14 @@ export default function PerfilScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Global Style Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerBtn}>
+        <TouchableOpacity style={styles.headerBtn} onPress={() => setNotifVisible(true)}>
           <Ionicons name="notifications-outline" size={24} color={Colors.textSecondary} />
+          {/* Notification dot */}
+          {hasUnread && <View style={styles.notifDot} />}
         </TouchableOpacity>
         
         <View style={styles.headerCenter}>
-          <View style={styles.logoBox}>
-            <Text style={styles.logoL}>L</Text>
-          </View>
+          <BrandLogo size={28} />
           <Text style={styles.appName}>Perfil</Text>
         </View>
 
@@ -228,7 +187,6 @@ export default function PerfilScreen() {
           <Text style={styles.email} numberOfLines={1} adjustsFontSizeToFit>
             {user?.email}
           </Text>
-          <Badge label={level} color="amber" />
         </View>
 
         {/* Card de pontos + progresso (Bento Style) */}
@@ -279,15 +237,15 @@ export default function PerfilScreen() {
         )}
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Historico de contribuicoes</Text>
+          <Text style={styles.sectionTitle}>Histórico de contribuições</Text>
           <View style={styles.historyCard}>
             {historyLoading ? (
               <View style={styles.historyLoading}>
                 <ActivityIndicator color={Colors.primaryLight} />
-                <Text style={styles.historyHint}>Carregando historico...</Text>
+                <Text style={styles.historyHint}>Carregando histórico...</Text>
               </View>
             ) : history.length === 0 ? (
-              <Text style={styles.historyHint}>Voce ainda nao enviou contribuicoes.</Text>
+              <Text style={styles.historyHint}>Você ainda não enviou contribuições.</Text>
             ) : (
               history.map((entry, idx) => (
                 <View key={entry.id} style={[styles.historyRow, idx > 0 && styles.historyRowBorder]}>
@@ -320,7 +278,7 @@ export default function PerfilScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Configurações</Text>
           <View style={styles.menuCard}>
-            <TouchableOpacity style={styles.menuItem} onPress={openEditAccount}>
+            <TouchableOpacity style={styles.menuItem} onPress={() => setEditOpen(true)}>
               <View style={styles.menuIconWrap}><Ionicons name="person-outline" size={20} color={Colors.text} /></View>
               <Text style={styles.menuText}>Dados da conta</Text>
               <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
@@ -345,62 +303,25 @@ export default function PerfilScreen() {
         </View>
       </ScrollView>
 
-      <Modal visible={editOpen} transparent animationType="slide" onRequestClose={() => setEditOpen(false)}>
-        <Pressable style={styles.overlay} onPress={() => setEditOpen(false)}>
-          <Pressable style={styles.sheet} onPress={() => {}}>
-            <View style={styles.handle} />
-            <Text style={styles.sheetTitle}>Dados da conta</Text>
-
-            <Text style={styles.inputLabel}>Nome</Text>
-            <TextInput
-              value={editName}
-              onChangeText={setEditName}
-              style={styles.input}
-              placeholder="Seu nome"
-              placeholderTextColor={Colors.textMuted}
-              autoCapitalize="words"
-            />
-
-            <Text style={styles.inputLabel}>E-mail</Text>
-            <TextInput
-              value={editEmail}
-              onChangeText={setEditEmail}
-              style={styles.input}
-              placeholder="voce@email.com"
-              placeholderTextColor={Colors.textMuted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-
-            <Button
-              label={updateProfile.isPending ? 'Salvando...' : 'Salvar alteracoes'}
-              fullWidth
-              size="lg"
-              loading={updateProfile.isPending}
-              onPress={submitAccountEdit}
-              style={{ marginTop: Spacing.lg, marginBottom: Spacing.xl }}
-            />
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <EditProfileModal visible={editOpen} onClose={() => setEditOpen(false)} />
 
       <Modal visible={notifOpen} transparent animationType="slide" onRequestClose={() => setNotifOpen(false)}>
         <Pressable style={styles.overlay} onPress={() => setNotifOpen(false)}>
           <Pressable style={styles.sheet} onPress={() => {}}>
             <View style={styles.handle} />
-            <Text style={styles.sheetTitle}>Notificacoes</Text>
+            <Text style={styles.sheetTitle}>Configurações de Notificações</Text>
 
             {notifLoading ? (
               <View style={styles.historyLoading}>
                 <ActivityIndicator color={Colors.primaryLight} />
-                <Text style={styles.historyHint}>Carregando preferencias...</Text>
+                <Text style={styles.historyHint}>Carregando preferências...</Text>
               </View>
             ) : (
               <>
                 <View style={styles.toggleRow}>
                   <View style={styles.toggleMain}>
-                    <Text style={styles.toggleTitle}>Receber notificacoes</Text>
-                    <Text style={styles.toggleDesc}>Liga/desliga todos os alertas do app.</Text>
+                    <Text style={styles.toggleTitle}>Receber notificações</Text>
+                    <Text style={styles.toggleDesc}>Permite que o Lista Smart envie alertas para o seu dispositivo. Desative para silenciar completamente o app.</Text>
                   </View>
                   <Switch
                     value={notifPrefs.enabled}
@@ -412,8 +333,8 @@ export default function PerfilScreen() {
 
                 <View style={[styles.toggleRow, !notifPrefs.enabled && styles.toggleDisabled]}>
                   <View style={styles.toggleMain}>
-                    <Text style={styles.toggleTitle}>Contribuicao aprovada</Text>
-                    <Text style={styles.toggleDesc}>Avisa quando voce ganhar pontos.</Text>
+                    <Text style={styles.toggleTitle}>Contribuição aprovada</Text>
+                    <Text style={styles.toggleDesc}>Seja avisado e comemore imediatamente sempre que você ganhar pontos no ranking por validar preços.</Text>
                   </View>
                   <Switch
                     value={notifPrefs.contributionApproved}
@@ -426,8 +347,8 @@ export default function PerfilScreen() {
 
                 <View style={[styles.toggleRow, !notifPrefs.enabled && styles.toggleDisabled]}>
                   <View style={styles.toggleMain}>
-                    <Text style={styles.toggleTitle}>Queda de preco</Text>
-                    <Text style={styles.toggleDesc}>Alerta de produtos com preco melhor.</Text>
+                    <Text style={styles.toggleTitle}>Queda de preço</Text>
+                    <Text style={styles.toggleDesc}>Saiba na hora quando os itens salvos nas suas listas ficarem mais baratos em supermercados próximos a você.</Text>
                   </View>
                   <Switch
                     value={notifPrefs.priceDrop}
@@ -440,8 +361,8 @@ export default function PerfilScreen() {
 
                 <View style={[styles.toggleRow, !notifPrefs.enabled && styles.toggleDisabled]}>
                   <View style={styles.toggleMain}>
-                    <Text style={styles.toggleTitle}>Sincronizacao offline</Text>
-                    <Text style={styles.toggleDesc}>Informa quando dados offline forem sincronizados.</Text>
+                    <Text style={styles.toggleTitle}>Sincronização offline</Text>
+                    <Text style={styles.toggleDesc}>Receba um aviso discreto assim que suas operações feitas sem internet forem sincronizadas com segurança.</Text>
                   </View>
                   <Switch
                     value={notifPrefs.offlineSync}
@@ -453,7 +374,7 @@ export default function PerfilScreen() {
                 </View>
 
                 <Button
-                  label={notifSaving ? 'Salvando...' : 'Salvar preferencias'}
+                  label={notifSaving ? 'Salvando...' : 'Salvar preferências'}
                   fullWidth
                   size="lg"
                   loading={notifSaving}
@@ -465,6 +386,7 @@ export default function PerfilScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+      <NotificationsModal visible={notifVisible} onClose={() => setNotifVisible(false)} />
     </SafeAreaView>
   )
 }
@@ -482,6 +404,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: Colors.border,
+    position: 'relative',
+  },
+  notifDot: {
+    position: 'absolute', top: 8, right: 10,
+    width: 6, height: 6, borderRadius: 3,
+    backgroundColor: Colors.primaryLight,
   },
   headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   logoBox: {
@@ -610,23 +538,6 @@ const styles = StyleSheet.create({
     fontWeight: Typography.bold,
     color: Colors.text,
     marginBottom: Spacing.lg,
-  },
-  inputLabel: {
-    fontSize: Typography.xs,
-    color: Colors.textSecondary,
-    marginBottom: 6,
-    fontWeight: Typography.semibold,
-  },
-  input: {
-    backgroundColor: Colors.bg,
-    borderWidth: 1,
-    borderColor: Colors.borderMed,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    fontSize: Typography.base,
-    color: Colors.text,
-    marginBottom: Spacing.md,
   },
 
   toggleRow: {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -13,6 +13,12 @@ import type { PriceComparison } from '@/types'
 export default function CompararScreen() {
   const [selectedListId, setSelectedListId] = useState<string | null>(null)
   const { lists } = useLists()
+
+  useEffect(() => {
+    if (lists.length > 0 && !selectedListId) {
+      setSelectedListId(lists[0].id)
+    }
+  }, [lists, selectedListId])
 
   const { data: comparisons = [], isLoading, isFetching } =
     usePriceComparison(selectedListId)

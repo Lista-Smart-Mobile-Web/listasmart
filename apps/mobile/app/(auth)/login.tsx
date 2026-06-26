@@ -9,6 +9,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Ionicons } from '@expo/vector-icons'
+import { LinearGradient } from 'expo-linear-gradient'
 import api from '@services/api'
 import { useAuthStore } from '@store/useAuthStore'
 import { Button, Input } from '@components/ui'
@@ -43,7 +44,10 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.glowBg} />
+      <LinearGradient
+        colors={['rgba(196, 122, 42, 0.25)', 'transparent']}
+        style={styles.glowBg}
+      />
       
       <SafeAreaView style={styles.safe}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
@@ -156,7 +160,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
   glowBg: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(196,122,42,0.12)',
   },
   safe: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.xxl },

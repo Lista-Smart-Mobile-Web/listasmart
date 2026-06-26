@@ -2,55 +2,26 @@ import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useAnalyticsOverview } from '@hooks/useContributions'
-import { Card } from '@components/ui'
+import { Card, ScreenHeader, LoadingScreen, EmptyState } from '@components/ui'
 import { Colors, Typography, Spacing, Radius } from '@constants/index'
 
-// TODO: substituir mocks pelos dados reais de GET /analytics/overview quando backend disponível
-// Os mocks abaixo simulam a estrutura esperada da resposta da API
-
-const MOCK_OVERVIEW = {
-  totalSaved: 47.3,
-  avgSavingsPercent: 12,
-  topCategory: 'Laticínios',
-  cheapestMarket: 'Atacadão',
-  weeklyTrend: [
-    { date: 'Seg', total: 85 },
-    { date: 'Ter', total: 92 },
-    { date: 'Qua', total: 78 },
-    { date: 'Qui', total: 110 },
-    { date: 'Sex', total: 95 },
-    { date: 'Sáb', total: 130 },
-    { date: 'Dom', total: 60 },
-  ],
-}
-
 export default function DashboardScreen() {
-  const { data: overview, isLoading } = useAnalyticsOverview()
+  const { data, isLoading } = useAnalyticsOverview()
 
-  // Usa dados reais se disponíveis, senão mock para visualização
-  const data = overview ?? MOCK_OVERVIEW
-  const isMock = !overview
+  const maxTrend = data ? Math.max(...data.weeklyTrend.map((d: any) => d.total)) : 0
 
-  const maxTrend = Math.max(...data.weeklyTrend.map((d) => d.total))
+  if (isLoading) return <LoadingScreen message="Analisando suas economias..." />
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScreenHeader title="Inteligência" subtitle="Seu painel de economia" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Inteligência</Text>
-          <Text style={styles.subtitle}>Seu painel de economia</Text>
-          {isMock && (
-            <View style={styles.mockBadge}>
-              <Text style={styles.mockText}>Dados de exemplo · conecte ao backend</Text>
-            </View>
-          )}
-        </View>
-
-        {isLoading ? (
-          <View style={styles.loading}>
-            <ActivityIndicator color={Colors.primaryLight} />
-          </View>
+        {!data ? (
+          <EmptyState
+            icon="bar-chart-outline"
+            title="Ainda sem dados"
+            description="Conecte ao backend e comece a contribuir com preços para ver suas estatísticas detalhadas."
+          />
         ) : (
           <>
             {/* Cards de métricas */}
@@ -119,19 +90,7 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.bg },
-  scroll: { paddingBottom: 100, gap: Spacing.lg },
-
-  header: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg, gap: Spacing.xs },
-  title: { fontSize: Typography.xl, fontWeight: Typography.extrabold, color: Colors.text },
-  subtitle: { fontSize: Typography.sm, color: Colors.textSecondary },
-  mockBadge: {
-    alignSelf: 'flex-start', marginTop: Spacing.sm,
-    backgroundColor: Colors.primaryDim, borderWidth: 1, borderColor: Colors.primaryBorder,
-    borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 3,
-  },
-  mockText: { fontSize: 10, color: Colors.primaryLight, fontWeight: Typography.semibold },
-
-  loading: { alignItems: 'center', paddingTop: 60 },
+  scroll: { paddingBottom: 100, gap: Spacing.lg, paddingTop: Spacing.md },
 
   metricsRow: { flexDirection: 'row', gap: Spacing.sm, paddingHorizontal: Spacing.xl },
   metricCard: { flex: 1, gap: Spacing.xs },

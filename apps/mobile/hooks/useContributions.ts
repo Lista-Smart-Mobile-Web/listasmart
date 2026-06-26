@@ -64,9 +64,22 @@ export function useContributionHistory() {
 }
 
 export function useRanking() {
-  return useQuery<RankingEntry[]>({
+  return useQuery<{ leaderboard: RankingEntry[], me: RankingEntry | null }>({
     queryKey: ['ranking'],
-    queryFn: () => api.get('/ranking').then((r) => r.data),
+    queryFn: () => api.get('/ranking').then((r) => {
+      const data = r.data
+      const mapEntry = (entry: any): RankingEntry => ({
+        userId: entry.id,
+        position: entry.rank,
+        name: entry.name,
+        level: entry.level,
+        points: entry.points_this_week || 0,
+      })
+      return {
+        leaderboard: (data.leaderboard || []).map(mapEntry),
+        me: data.me ? mapEntry(data.me) : null,
+      }
+    }),
     staleTime: 1000 * 60 * 5,
   })
 }

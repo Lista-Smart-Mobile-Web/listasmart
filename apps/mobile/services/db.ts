@@ -66,8 +66,13 @@ export function getLists(): ShoppingListLocal[] {
 
 export function upsertList(list: Pick<ShoppingListLocal, 'id' | 'name' | 'createdAt'>, pendingSync = false): void {
   db.runSync(
-    `INSERT OR REPLACE INTO lists (id, name, is_active, created_at, pending_sync)
-     VALUES (?, ?, 1, ?, ?)`,
+    `INSERT INTO lists (id, name, is_active, created_at, pending_sync)
+     VALUES (?, ?, 1, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       name = EXCLUDED.name,
+       is_active = EXCLUDED.is_active,
+       created_at = EXCLUDED.created_at,
+       pending_sync = EXCLUDED.pending_sync`,
     [list.id, list.name, list.createdAt, pendingSync ? 1 : 0]
   )
 }

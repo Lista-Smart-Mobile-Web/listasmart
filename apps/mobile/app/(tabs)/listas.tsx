@@ -9,7 +9,9 @@ import { Ionicons } from '@expo/vector-icons'
 
 import { useLists, useDeleteList } from '@hooks/useLists'
 import { useAuthStore } from '@store/useAuthStore'
-import { OfflineBanner } from '@components/ui'
+import { OfflineBanner, ScreenHeader, EmptyState, LoadingScreen } from '@components/ui'
+import { NotificationsModal } from '@components/NotificationsModal'
+import { useNotificationStore } from '@store/useNotificationStore'
 import { Colors, Typography, Spacing, Radius } from '@constants/index'
 import type { ShoppingListLocal } from '@/types'
 
@@ -18,6 +20,9 @@ export default function ListasScreen() {
   const deleteList = useDeleteList()
   const user = useAuthStore((s) => s.user)
   const [searchQuery, setSearchQuery] = useState('')
+  const [notifVisible, setNotifVisible] = useState(false)
+  const notifications = useNotificationStore((s) => s.notifications)
+  const hasUnread = notifications.some((n) => !n.isRead)
 
   const filteredLists = lists.filter((l: ShoppingListLocal) =>
     l.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -36,25 +41,17 @@ export default function ListasScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <OfflineBanner />
 
-      {/* Global Style Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.headerBtn}>
-          <Ionicons name="notifications-outline" size={24} color={Colors.textSecondary} />
-          {/* Notification dot */}
-          <View style={styles.notifDot} />
-        </TouchableOpacity>
-        
-        <View style={styles.headerCenter}>
-          <View style={styles.logoBox}>
-            <Text style={styles.logoL}>L</Text>
-          </View>
-          <Text style={styles.appName}>Lista Smart</Text>
-        </View>
-
-        <TouchableOpacity style={styles.avatarWrap} onPress={() => router.push('/(tabs)/perfil')}>
-          <Text style={styles.avatarText}>{user?.name?.[0]?.toUpperCase() ?? '?'}</Text>
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        title="Lista Smart"
+        showNotifications
+        hasUnread={hasUnread}
+        onNotificationPress={() => setNotifVisible(true)}
+        rightElement={
+          <TouchableOpacity style={styles.avatarWrap} onPress={() => router.push('/(tabs)/perfil')}>
+            <Text style={styles.avatarText}>{user?.name?.[0]?.toUpperCase() ?? '?'}</Text>
+          </TouchableOpacity>
+        }
+      />
 
       {/* Floating Search Bar */}
       <View style={styles.searchWrap}>
@@ -94,14 +91,13 @@ export default function ListasScreen() {
 
       {/* Lista */}
       {isLoading ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Carregando…</Text>
-        </View>
+        <LoadingScreen message="Carregando listas..." />
       ) : filteredLists.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="bag-outline" size={48} color={Colors.textMuted} />
-          <Text style={styles.emptyTitle}>Nenhuma lista encontrada</Text>
-        </View>
+        <EmptyState
+          icon="bag-outline"
+          title={searchQuery ? "Nenhuma lista encontrada" : "Crie sua primeira lista"}
+          description={searchQuery ? "Nenhum resultado para a sua busca." : "Toque no botão + acima para começar a economizar."}
+        />
       ) : (
         <FlatList
           data={filteredLists}
@@ -141,36 +137,13 @@ export default function ListasScreen() {
           }}
         />
       )}
+      <NotificationsModal visible={notifVisible} onClose={() => setNotifVisible(false)} />
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.bg },
-
-  header: { 
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
-    paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.md 
-  },
-  headerBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Colors.surface,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: Colors.border,
-  },
-  notifDot: {
-    position: 'absolute', top: 8, right: 10,
-    width: 6, height: 6, borderRadius: 3,
-    backgroundColor: Colors.primaryLight,
-  },
-  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  logoBox: {
-    width: 28, height: 28, borderRadius: 8,
-    backgroundColor: Colors.primaryLight,
-    alignItems: 'center', justifyContent: 'center'
-  },
-  logoL: { fontSize: 16, fontWeight: '900', color: '#1a0d00' },
-  appName: { fontSize: 20, fontWeight: '800', color: Colors.text, letterSpacing: -0.5 },
   
   avatarWrap: {
     width: 40, height: 40, borderRadius: 20,
@@ -230,8 +203,4 @@ const styles = StyleSheet.create({
   progressBar: { flex: 1, height: 6, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: Radius.full, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: Colors.primaryLight, borderRadius: Radius.full },
   progressText: { fontSize: Typography.xs, fontWeight: Typography.bold, color: Colors.textSecondary, width: 60, textAlign: 'right' },
-
-  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 100, gap: Spacing.md },
-  emptyTitle: { fontSize: Typography.lg, fontWeight: Typography.bold, color: Colors.text },
-  emptyText: { fontSize: Typography.sm, color: Colors.textMuted },
 })

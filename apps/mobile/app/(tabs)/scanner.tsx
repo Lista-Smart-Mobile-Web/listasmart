@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, Modal, Pressable,
   TextInput, FlatList, ActivityIndicator, ScrollView, Alert,
@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import { Ionicons } from '@expo/vector-icons'
 import { useSubmitContribution } from '@hooks/useContributions'
-import { useProductByBarcode, useProductSearch } from '@hooks/useProducts'
+import { useProductByBarcode, useProductSearch, useCreateProduct } from '@hooks/useProducts'
 import { useMarkets } from '@hooks/useMarkets'
 import { looksLikeFiscalQr, processFiscalQr as processFiscalQrAction, formatPriceInput } from '@services/scanner'
 import { Button } from '@components/ui'
@@ -15,7 +15,7 @@ import { Colors, Typography, Spacing, Radius } from '@constants/index'
 import type { Product, Market } from '@/types'
 import type { NfeMatchedItem } from '@/src/modules/scanner/domain/ScannerTypes'
 
-type Screen = 'camera' | 'search' | 'nfeItems' | 'price'
+type Screen = 'camera' | 'search' | 'create_product' | 'nfeItems' | 'price'
 type ContributionType = 'qr_code' | 'manual'
 
 export default function ScannerScreen() {
@@ -32,12 +32,16 @@ export default function ScannerScreen() {
   const [contributionType, setContributionType] = useState<ContributionType>('manual')
 
   const [searchText, setSearchText] = useState('')
+  const [newCat, setNewCat] = useState('Alimentos')
+  const [newUnit, setNewUnit] = useState('un')
+
   const [product, setProduct] = useState<Product | null>(null)
   const [market, setMarket] = useState<Market | null>(null)
   const [price, setPrice] = useState('')
   const [success, setSuccess] = useState(false)
 
   const submitContribution = useSubmitContribution()
+  const createProduct = useCreateProduct()
   const barcodeQuery = useProductByBarcode(barcode)
   const searchQuery = useProductSearch(searchText)
   const marketsQuery = useMarkets()
@@ -138,11 +142,28 @@ export default function ScannerScreen() {
 
   function selectProduct(p: Product) {
     setProduct(p)
-    setContributionType('manual')
+    setContributionType(barcode ? 'qr_code' : 'manual')
     setPreferredMarketId(null)
     setMarket(null)
     setPrice('')
     setScreen('price')
+  }
+
+  function handleCreateProduct() {
+    if (searchText.length < 2) return
+    createProduct.mutate({
+      name: searchText,
+      category: newCat,
+      unit: newUnit,
+      barcode: barcode || null,
+    }, {
+      onSuccess: (newProd) => {
+        selectProduct(newProd)
+      },
+      onError: () => {
+        Alert.alert('Erro', 'Não foi possível cadastrar o produto.')
+      }
+    })
   }
 
   function closeAll() {
@@ -289,7 +310,13 @@ export default function ScannerScreen() {
             )}
 
             {searchText.length >= 2 && !searchQuery.isLoading && !searchQuery.data?.length && (
-              <Text style={styles.emptyText}>Nenhum produto encontrado</Text>
+              <View style={{ alignItems: 'center', marginTop: Spacing.xl, marginBottom: Spacing.lg }}>
+                <Text style={styles.emptyText}>Produto não encontrado no catálogo.</Text>
+                <Button 
+                  label="Cadastrar novo produto" 
+                  onPress={() => setScreen('create_product')} 
+                />
+              </View>
             )}
 
             {searchText.length < 2 && (
@@ -311,6 +338,64 @@ export default function ScannerScreen() {
                 </TouchableOpacity>
               )}
               ItemSeparatorComponent={() => <View style={styles.separator} />}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={screen === 'create_product'}
+        transparent
+        animationType="slide"
+        onRequestClose={closeAll}
+      >
+        <Pressable style={styles.overlay} onPress={closeAll}>
+          <Pressable style={styles.sheet} onPress={() => {}}>
+            <View style={styles.handle} />
+            <Text style={styles.sheetTitle}>Cadastrar Produto</Text>
+
+            <Text style={styles.sectionLabel}>Nome do Produto</Text>
+            <TextInput
+              style={styles.searchInput}
+              value={searchText}
+              onChangeText={setSearchText}
+              autoFocus
+            />
+
+            <Text style={styles.sectionLabel}>Categoria</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: Spacing.md }}>
+              {['Alimentos', 'Laticínios', 'Carnes', 'Hortifruti', 'Bebidas', 'Limpeza', 'Padaria'].map((c) => (
+                <TouchableOpacity 
+                  key={c} 
+                  style={[styles.chip, newCat === c && styles.chipActive]}
+                  onPress={() => setNewCat(c)}
+                >
+                  <Text style={[styles.chipText, newCat === c && styles.chipTextActive]}>{c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.sectionLabel}>Unidade de Medida</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: Spacing.xl }}>
+              {['un', 'kg', 'g', 'l', 'ml', 'dz'].map((u) => (
+                <TouchableOpacity 
+                  key={u} 
+                  style={[styles.chip, newUnit === u && styles.chipActive]}
+                  onPress={() => setNewUnit(u)}
+                >
+                  <Text style={[styles.chipText, newUnit === u && styles.chipTextActive]}>{u}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Button
+              label={createProduct.isPending ? 'Salvando...' : 'Salvar Produto'}
+              loading={createProduct.isPending}
+              onPress={handleCreateProduct}
+              disabled={searchText.length < 2 || createProduct.isPending}
+              fullWidth
+              size="lg"
+              style={{ marginBottom: Spacing.xl }}
             />
           </Pressable>
         </Pressable>
@@ -611,4 +696,12 @@ const styles = StyleSheet.create({
   successBox: { alignItems: 'center', paddingVertical: Spacing.xxxl, gap: Spacing.md },
   successTitle: { fontSize: Typography.xl, fontWeight: Typography.extrabold, color: Colors.text },
   successSub: { fontSize: Typography.base, color: Colors.primaryLight },
+
+  chip: {
+    borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.full,
+    paddingHorizontal: Spacing.md, paddingVertical: 6, backgroundColor: Colors.bg,
+  },
+  chipActive: { borderColor: Colors.primaryLight, backgroundColor: Colors.primaryDim },
+  chipText: { fontSize: Typography.sm, color: Colors.textSecondary },
+  chipTextActive: { color: Colors.primaryLight, fontWeight: Typography.bold },
 })

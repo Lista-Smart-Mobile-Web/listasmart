@@ -43,9 +43,19 @@ export async function registerForPushNotifications(): Promise<string | null> {
     })
   }
 
-  const projectId = Constants.expoConfig?.extra?.eas?.projectId
-  const token = await Notifications.getExpoPushTokenAsync({ projectId })
-  return token.data
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+  if (!projectId) {
+    // Notificações push desativadas em desenvolvimento.
+    return null;
+  }
+
+  try {
+    const token = await Notifications.getExpoPushTokenAsync({ projectId });
+    return token.data;
+  } catch (error) {
+    console.error("Erro ao obter push token do Expo:", error);
+    return null;
+  }
 }
 
 // ─── Notificações locais ──────────────────────────────────────────────────────
@@ -64,7 +74,7 @@ export async function notifyPriceAlert(productName: string, marketName: string, 
   if (!(await shouldSendNotification('priceDrop'))) return
 
   await scheduleLocalNotification(
-    '💰 Queda de preço!',
+    'Alerta de preço',
     `${productName} está por R$ ${price.toFixed(2)} em ${marketName}`
   )
 }
@@ -73,7 +83,7 @@ export async function notifyContributionApproved(points: number): Promise<void> 
   if (!(await shouldSendNotification('contributionApproved'))) return
 
   await scheduleLocalNotification(
-    '✅ Contribuição aprovada',
+    'Contribuição aprovada',
     `+${points} pontos adicionados ao seu perfil!`
   )
 }
@@ -82,7 +92,7 @@ export async function notifyOfflineSynced(count: number): Promise<void> {
   if (!(await shouldSendNotification('offlineSync'))) return
 
   await scheduleLocalNotification(
-    '🔄 Sincronização concluída',
+    'Sincronização concluída',
     `${count} ${count === 1 ? 'operação sincronizada' : 'operações sincronizadas'} com sucesso.`
   )
 }

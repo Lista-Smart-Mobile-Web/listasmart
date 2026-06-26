@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   Alert, TextInput, Modal, Pressable,
@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useListStore } from '@store/useListStore'
 import { OfflineBanner } from '@components/ui'
 import { Colors, Typography, Spacing, Radius } from '@constants/index'
+import { useListDetail } from '@hooks/useLists'
 import type { ListItemLocal } from '@/types'
 
 // TODO: integrar com usePriceComparison quando backend estiver disponível
@@ -20,7 +21,15 @@ export default function ListaDetalheScreen() {
   const [newItemName, setNewItemName] = useState('')
 
   const list = useListStore((s) => s.lists.find((l) => l.id === id))
-  const { toggleItem, removeItem, addItem } = useListStore()
+  const { toggleItem, removeItem, addItem, updateListItemsFromServer } = useListStore()
+  
+  const { serverItems } = useListDetail(id)
+
+  useEffect(() => {
+    if (serverItems) {
+      updateListItemsFromServer(id, serverItems)
+    }
+  }, [serverItems, id, updateListItemsFromServer])
 
   if (!list) {
     return (
@@ -122,7 +131,7 @@ export default function ListaDetalheScreen() {
                 </Text>
                 <Text style={styles.itemMeta}>
                   {item.quantity}x · {item.unit}
-                  {item.avgPrice ? `  ·  ~R$ ${item.avgPrice.toFixed(2)}` : ''}
+                  {item.avgPrice ? `  ·  ~R$ ${Number(item.avgPrice).toFixed(2)}` : ''}
                 </Text>
               </View>
               {item.cheapestMarket && !item.isChecked && (
